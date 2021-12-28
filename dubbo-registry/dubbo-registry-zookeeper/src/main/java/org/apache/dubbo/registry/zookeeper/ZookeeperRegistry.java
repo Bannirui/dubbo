@@ -53,7 +53,7 @@ import static org.apache.dubbo.common.constants.RegistryConstants.PROVIDERS_CATE
 import static org.apache.dubbo.common.constants.RegistryConstants.ROUTERS_CATEGORY;
 
 /**
- * ZookeeperRegistry
+ * ZookeeperRegistry dubbo在zk中存储的节点层级: root层 service层 type层 url层
  */
 public class ZookeeperRegistry extends CacheableFailbackRegistry {
 
@@ -74,28 +74,22 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
         if (url.isAnyHost()) {
             throw new IllegalStateException("registry address == null");
         }
-        String group = url.getGroup(DEFAULT_ROOT);
+        String group = url.getGroup(DEFAULT_ROOT); // URL配置信息中的配置 作为zk的根节点
         if (!group.startsWith(PATH_SEPARATOR)) {
             group = PATH_SEPARATOR + group;
         }
         this.root = group;
-        zkClient = zookeeperTransporter.connect(url);
-        zkClient.addStateListener((state) -> {
+        zkClient = zookeeperTransporter.connect(url); // 创建zk client
+        zkClient.addStateListener((state) -> { // 添加状态监听器
             if (state == StateListener.RECONNECTED) {
-                logger.warn("Trying to fetch the latest urls, in case there're provider changes during connection loss.\n" +
-                    " Since ephemeral ZNode will not get deleted for a connection lose, " +
-                    "there's no need to re-register url of this instance.");
                 ZookeeperRegistry.this.fetchLatestAddresses();
             } else if (state == StateListener.NEW_SESSION_CREATED) {
-                logger.warn("Trying to re-register urls and re-subscribe listeners of this instance to registry...");
                 try {
                     ZookeeperRegistry.this.recover();
                 } catch (Exception e) {
-                    logger.error(e.getMessage(), e);
                 }
             } else if (state == StateListener.SESSION_LOST) {
-                logger.warn("Url of this instance will be deleted from registry soon. " +
-                    "Dubbo client will try to re-register once a new session is created.");
+
             } else if (state == StateListener.SUSPENDED) {
 
             } else if (state == StateListener.CONNECTED) {
@@ -148,7 +142,7 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
         try {
             checkDestroyed();
             if (ANY_VALUE.equals(url.getServiceInterface())) {
-                String root = toRootPath();
+                String root = toRootPath(); // 根目录
                 boolean check = url.getParameter(CHECK_KEY, false);
                 ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
                 ChildListener zkListener = listeners.computeIfAbsent(listener, k -> (parentPath, currentChilds) -> {

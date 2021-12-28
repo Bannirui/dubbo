@@ -56,18 +56,15 @@ public abstract class AbstractZookeeperTransporter implements ZookeeperTransport
         List<String> addressList = getURLBackupAddress(url);
         // The field define the zookeeper server , including protocol, host, port, username, password
         if ((zookeeperClient = fetchAndUpdateZookeeperClientCache(addressList)) != null && zookeeperClient.isConnected()) {
-            logger.info("find valid zookeeper client from the cache for address: " + url);
             return zookeeperClient;
         }
         // avoid creating too many connections， so add lock
         synchronized (zookeeperClientMap) {
             if ((zookeeperClient = fetchAndUpdateZookeeperClientCache(addressList)) != null && zookeeperClient.isConnected()) {
-                logger.info("find valid zookeeper client from the cache for address: " + url);
                 return zookeeperClient;
             }
 
             zookeeperClient = createZookeeperClient(url);
-            logger.info("No valid zookeeper client found from cache, therefore create a new client for url. " + url);
             writeToClientMap(addressList, zookeeperClient);
         }
         return zookeeperClient;
