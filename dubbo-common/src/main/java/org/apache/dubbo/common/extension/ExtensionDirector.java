@@ -65,19 +65,19 @@ public class ExtensionDirector implements ExtensionAccessor {
     @Override
     public <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         checkDestroyed();
-        if (type == null) {
+        if (type == null) { // 常规判空
             throw new IllegalArgumentException("Extension type == null");
         }
-        if (!type.isInterface()) {
+        if (!type.isInterface()) { // type得是一个接口
             throw new IllegalArgumentException("Extension type (" + type + ") is not an interface!");
         }
-        if (!withExtensionAnnotation(type)) {
+        if (!withExtensionAnnotation(type)) { // type得是可扩展的(有@SPI类注解)
             throw new IllegalArgumentException("Extension type (" + type +
                 ") is not an extension, because it is NOT annotated with @" + SPI.class.getSimpleName() + "!");
         }
 
         // 1. find in local cache
-        ExtensionLoader<T> loader = (ExtensionLoader<T>) extensionLoadersMap.get(type);
+        ExtensionLoader<T> loader = (ExtensionLoader<T>) extensionLoadersMap.get(type); // 优先缓存尝试获取
 
         ExtensionScope scope = extensionScopeMap.get(type);
         if (scope == null) {

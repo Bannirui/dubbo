@@ -1,0 +1,2 @@
+dog=org.apache.dubbo.common.extension.spi.Dog
+cat=org.apache.dubbo.common.extension.spi.Cat
