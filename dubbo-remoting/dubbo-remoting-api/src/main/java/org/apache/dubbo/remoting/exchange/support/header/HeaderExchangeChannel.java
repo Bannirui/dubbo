@@ -39,7 +39,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 /**
  * ExchangeReceiver
  */
-final class HeaderExchangeChannel implements ExchangeChannel {
+final class HeaderExchangeChannel implements ExchangeChannel { // 基于协议头的信息交换通道
 
     private static final Logger logger = LoggerFactory.getLogger(HeaderExchangeChannel.class);
 
@@ -60,11 +60,11 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         if (ch == null) {
             return null;
         }
-        HeaderExchangeChannel ret = (HeaderExchangeChannel) ch.getAttribute(CHANNEL_KEY);
+        HeaderExchangeChannel ret = (HeaderExchangeChannel) ch.getAttribute(CHANNEL_KEY); // 获取通道中的HeaderExchangeChannel
         if (ret == null) {
-            ret = new HeaderExchangeChannel(ch);
+            ret = new HeaderExchangeChannel(ch); // 创建
             if (ch.isConnected()) {
-                ch.setAttribute(CHANNEL_KEY, ret);
+                ch.setAttribute(CHANNEL_KEY, ret); // 加入属性
             }
         }
         return ret;
@@ -72,7 +72,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
 
     static void removeChannelIfDisconnected(Channel ch) {
         if (ch != null && !ch.isConnected()) {
-            ch.removeAttribute(CHANNEL_KEY);
+            ch.removeAttribute(CHANNEL_KEY); // 如果通道断开了连接 移除属性
         }
     }
 
@@ -89,7 +89,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
-        if (closed) {
+        if (closed) { // 通道已经关闭了就无法发送消息
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send message " + message + ", cause: The channel " + this + " is closed!");
         }
         if (message instanceof Request
@@ -97,7 +97,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
                 || message instanceof String) {
             channel.send(message, sent);
         } else {
-            Request request = new Request();
+            Request request = new Request(); // 创建request实例
             request.setVersion(Version.getProtocolVersion());
             request.setTwoWay(false);
             request.setData(message);
