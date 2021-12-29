@@ -24,7 +24,7 @@ import static org.apache.dubbo.common.extension.ExtensionScope.FRAMEWORK;
 import static org.apache.dubbo.rpc.Constants.PROXY_KEY;
 
 /**
- * ProxyFactory. (API/SPI, Singleton, ThreadSafe)
+ * ProxyFactory. (API/SPI, Singleton, ThreadSafe) 代理工厂接口 可扩展 默认实现是javassist dubbo提供了两种动态代理的实现: javassist和jdk
  */
 @SPI(value = "javassist", scope = FRAMEWORK)
 public interface ProxyFactory {

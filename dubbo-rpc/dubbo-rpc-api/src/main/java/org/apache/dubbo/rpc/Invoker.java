@@ -19,7 +19,7 @@ package org.apache.dubbo.rpc;
 import org.apache.dubbo.common.Node;
 
 /**
- * Invoker. (API/SPI, Prototype, ThreadSafe)
+ * Invoker. (API/SPI, Prototype, ThreadSafe) 核心模型 代表了一个可执行体 可以向它发起一个invoke调用 代表的是一次调用 可能是本地实现 可能是远程实现 也可能是集群实现
  *
  * @see org.apache.dubbo.rpc.Protocol#refer(Class, org.apache.dubbo.common.URL)
  * @see org.apache.dubbo.rpc.InvokerListener

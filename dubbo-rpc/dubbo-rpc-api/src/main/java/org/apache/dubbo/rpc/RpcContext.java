@@ -49,7 +49,7 @@ import java.util.concurrent.Future;
  * @export
  * @see org.apache.dubbo.rpc.filter.ContextFilter
  */
-public class RpcContext {
+public class RpcContext { // 远程调用的上下文 贯穿整个调用
 
     private static final RpcContext AGENT = new RpcContext();
 

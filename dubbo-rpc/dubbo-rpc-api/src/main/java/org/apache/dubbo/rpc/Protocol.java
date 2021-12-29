@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Protocol. (API/SPI, Singleton, ThreadSafe)
+ * Protocol. (API/SPI, Singleton, ThreadSafe) 服务域接口 协议接口 是一个可扩展接口 默认实现的是dubbo协议
  */
 @SPI(value = "dubbo", scope = ExtensionScope.FRAMEWORK)
 public interface Protocol {

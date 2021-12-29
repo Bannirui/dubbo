@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Invocation. (API, Prototype, NonThreadSafe)
+ * Invocation. (API, Prototype, NonThreadSafe) 会话域 持有调用过程中的变量(方法、参数)
  *
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
