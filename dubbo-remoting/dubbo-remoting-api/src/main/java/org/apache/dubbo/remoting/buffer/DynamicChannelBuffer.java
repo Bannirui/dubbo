@@ -29,7 +29,7 @@ public class DynamicChannelBuffer extends AbstractChannelBuffer {
     private ChannelBuffer buffer;
 
     public DynamicChannelBuffer(int estimatedLength) {
-        this(estimatedLength, HeapChannelBufferFactory.getInstance());
+        this(estimatedLength, HeapChannelBufferFactory.getInstance()); // 默认是HeapChannelBufferFactory
     }
 
     public DynamicChannelBuffer(int estimatedLength, ChannelBufferFactory factory) {
@@ -40,7 +40,7 @@ public class DynamicChannelBuffer extends AbstractChannelBuffer {
             throw new NullPointerException("factory");
         }
         this.factory = factory;
-        buffer = factory.getBuffer(estimatedLength);
+        buffer = factory.getBuffer(estimatedLength); // 创建缓冲区
     }
 
     @Override
