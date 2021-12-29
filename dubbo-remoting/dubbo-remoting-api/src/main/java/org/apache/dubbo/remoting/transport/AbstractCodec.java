@@ -52,7 +52,7 @@ public abstract class AbstractCodec implements Codec2, ScopeModelAware {
     }
 
     protected static void checkPayload(Channel channel, long size) throws IOException {
-        int payload = getPayload(channel);
+        int payload = getPayload(channel); // 消息长度
         boolean overPayload = isOverPayload(payload, size);
         if (overPayload) {
             ExceedPayloadLimitException e = new ExceedPayloadLimitException(
@@ -63,7 +63,7 @@ public abstract class AbstractCodec implements Codec2, ScopeModelAware {
     }
 
     protected static int getPayload(Channel channel) {
-        int payload = Constants.DEFAULT_PAYLOAD;
+        int payload = Constants.DEFAULT_PAYLOAD; // 默认长度
         if (channel != null && channel.getUrl() != null) {
             payload = channel.getUrl().getParameter(Constants.PAYLOAD_KEY, Constants.DEFAULT_PAYLOAD);
         }

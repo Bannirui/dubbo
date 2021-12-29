@@ -59,7 +59,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         initExecutor(url);
 
         try {
-            doOpen();
+            doOpen(); // 打开客户端
         } catch (Throwable t) {
             close();
             throw new RemotingException(url.toInetSocketAddress(), null,
@@ -69,17 +69,12 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
 
         try {
             // connect.
-            connect();
-            if (logger.isInfoEnabled()) {
-                logger.info("Start " + getClass().getSimpleName() + " " + NetUtils.getLocalAddress() + " connect to the server " + getRemoteAddress());
-            }
+            connect(); // 连接服务器
         } catch (RemotingException t) {
             if (url.getParameter(Constants.CHECK_KEY, true)) {
                 close();
                 throw t;
             } else {
-                logger.warn("Failed to start " + getClass().getSimpleName() + " " + NetUtils.getLocalAddress()
-                        + " connect to the server " + getRemoteAddress() + " (check == false, ignore and retry later!), cause: " + t.getMessage(), t);
             }
         } catch (Throwable t) {
             close();
@@ -194,8 +189,6 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
             }
 
             if (isClosed() || isClosing()) {
-                logger.warn("No need to connect to server " + getRemoteAddress() + " from " + getClass().getSimpleName() + " "
-                        + NetUtils.getLocalHost() + " using dubbo version " + Version.getVersion() + ", cause: client status is closed or closing.");
                 return;
             }
 
@@ -207,11 +200,6 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                         + ", cause: Connect wait timeout: " + getConnectTimeout() + "ms.");
 
             } else {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Successfully connect to server " + getRemoteAddress() + " from " + getClass().getSimpleName() + " "
-                            + NetUtils.getLocalHost() + " using dubbo version " + Version.getVersion()
-                            + ", channel is " + this.getChannel());
-                }
             }
 
         } catch (RemotingException e) {
@@ -236,12 +224,10 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                     channel.close();
                 }
             } catch (Throwable e) {
-                logger.warn(e.getMessage(), e);
             }
             try {
                 doDisConnect();
             } catch (Throwable e) {
-                logger.warn(e.getMessage(), e);
             }
         } finally {
             connectLock.unlock();
@@ -262,33 +248,28 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
     @Override
     public void close() {
         if (isClosed()) {
-            logger.warn("No need to close connection to server " + getRemoteAddress() + " from " + getClass().getSimpleName() + " " + NetUtils.getLocalHost() + " using dubbo version " + Version.getVersion() + ", cause: the client status is closed.");
             return;
         }
 
         connectLock.lock();
         try {
             if (isClosed()) {
-                logger.warn("No need to close connection to server " + getRemoteAddress() + " from " + getClass().getSimpleName() + " " + NetUtils.getLocalHost() + " using dubbo version " + Version.getVersion() + ", cause: the client status is closed.");
                 return;
             }
 
             try {
                 super.close();
             } catch (Throwable e) {
-                logger.warn(e.getMessage(), e);
             }
 
             try {
                 disconnect();
             } catch (Throwable e) {
-                logger.warn(e.getMessage(), e);
             }
 
             try {
                 doClose();
             } catch (Throwable e) {
-                logger.warn(e.getMessage(), e);
             }
 
         } finally {

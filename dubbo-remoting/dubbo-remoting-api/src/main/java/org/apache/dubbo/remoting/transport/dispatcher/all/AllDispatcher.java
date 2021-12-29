@@ -29,7 +29,7 @@ public class AllDispatcher implements Dispatcher {
 
     @Override
     public ChannelHandler dispatch(ChannelHandler handler, URL url) {
-        return new AllChannelHandler(handler, url);
+        return new AllChannelHandler(handler, url); // 线程池调度方法 任何消息以及操作部分都分发到线程池中
     }
 
 }

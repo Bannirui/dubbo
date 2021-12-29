@@ -44,9 +44,9 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
 
     protected static final String SERVER_THREAD_POOL_NAME = "DubboServerHandler";
     private static final Logger logger = LoggerFactory.getLogger(AbstractServer.class);
-    private ExecutorService executor;
-    private InetSocketAddress localAddress;
-    private InetSocketAddress bindAddress;
+    private ExecutorService executor; // 线程池
+    private InetSocketAddress localAddress; // 服务地址 也就是本地地址
+    private InetSocketAddress bindAddress; // 绑定地址
     private int accepts;
 
     private ExecutorRepository executorRepository;
@@ -54,25 +54,22 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
     public AbstractServer(URL url, ChannelHandler handler) throws RemotingException {
         super(url, handler);
         executorRepository = url.getOrDefaultApplicationModel().getExtensionLoader(ExecutorRepository.class).getDefaultExtension();
-        localAddress = getUrl().toInetSocketAddress();
+        localAddress = getUrl().toInetSocketAddress(); // 从URL携带的配置信息中解析本地IP
 
-        String bindIp = getUrl().getParameter(Constants.BIND_IP_KEY, getUrl().getHost());
-        int bindPort = getUrl().getParameter(Constants.BIND_PORT_KEY, getUrl().getPort());
+        String bindIp = getUrl().getParameter(Constants.BIND_IP_KEY, getUrl().getHost()); // 从URL携带的配置信息中解析绑定的IP
+        int bindPort = getUrl().getParameter(Constants.BIND_PORT_KEY, getUrl().getPort()); // 从URL携带的配置信息中解析绑定的端口号
         if (url.getParameter(ANYHOST_KEY, false) || NetUtils.isInvalidLocalHost(bindIp)) {
             bindIp = ANYHOST_VALUE;
         }
         bindAddress = new InetSocketAddress(bindIp, bindPort);
         this.accepts = url.getParameter(ACCEPTS_KEY, DEFAULT_ACCEPTS);
         try {
-            doOpen();
-            if (logger.isInfoEnabled()) {
-                logger.info("Start " + getClass().getSimpleName() + " bind " + getBindAddress() + ", export " + getLocalAddress());
-            }
+            doOpen(); // 开启服务器
         } catch (Throwable t) {
             throw new RemotingException(url.toInetSocketAddress(), null, "Failed to bind " + getClass().getSimpleName()
                     + " on " + getLocalAddress() + ", cause: " + t.getMessage(), t);
         }
-        executor = executorRepository.createExecutorIfAbsent(url);
+        executor = executorRepository.createExecutorIfAbsent(url); // 获取线程池
     }
 
     protected abstract void doOpen() throws Throwable;

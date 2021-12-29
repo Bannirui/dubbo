@@ -42,6 +42,7 @@ public class ChannelHandlers {
     }
 
     protected ChannelHandler wrapInternal(ChannelHandler handler, URL url) {
+        // 调用多消息处理器 对心跳消息进行功能增强
         return new MultiMessageHandler(new HeartbeatHandler(url.getOrDefaultFrameworkModel().getExtensionLoader(Dispatcher.class)
                 .getAdaptiveExtension().dispatch(handler, url)));
     }

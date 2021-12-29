@@ -28,7 +28,7 @@ import org.apache.dubbo.remoting.RemotingException;
  */
 public abstract class AbstractPeer implements Endpoint, ChannelHandler {
 
-    private final ChannelHandler handler;
+    private final ChannelHandler handler; // 装饰者模式
 
     private volatile URL url;
 
@@ -50,7 +50,7 @@ public abstract class AbstractPeer implements Endpoint, ChannelHandler {
 
     @Override
     public void send(Object message) throws RemotingException {
-        send(message, url.getParameter(Constants.SENT_KEY, false));
+        send(message, url.getParameter(Constants.SENT_KEY, false)); // URL中携带的配置信息 消息是否等待发送出去 sent=true->等待消息发送出去 消息发送失败就抛出异常 sent=false->不等待消息发出 将消息放入IO队列即刻返回
     }
 
     @Override

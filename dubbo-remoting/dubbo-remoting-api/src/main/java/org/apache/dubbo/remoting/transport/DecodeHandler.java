@@ -36,32 +36,26 @@ public class DecodeHandler extends AbstractChannelHandlerDelegate {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
-        if (message instanceof Decodeable) {
+        if (message instanceof Decodeable) { // Decodeable类型消息 对整个消息解码
             decode(message);
         }
 
-        if (message instanceof Request) {
+        if (message instanceof Request) { // Request类型的请求消息 对请求数据解码
             decode(((Request) message).getData());
         }
 
-        if (message instanceof Response) {
+        if (message instanceof Response) { // Response类型的返回数据 对返回结果解码
             decode(((Response) message).getResult());
         }
 
-        handler.received(channel, message);
+        handler.received(channel, message); // 将消息委托给handler继续处理
     }
 
     private void decode(Object message) {
-        if (message instanceof Decodeable) {
+        if (message instanceof Decodeable) { // 当消息是Decodeable类型的时候继续进行解析
             try {
                 ((Decodeable) message).decode();
-                if (log.isDebugEnabled()) {
-                    log.debug("Decode decodeable message " + message.getClass().getName());
-                }
             } catch (Throwable e) {
-                if (log.isWarnEnabled()) {
-                    log.warn("Call Decodeable.decode failed: " + e.getMessage(), e);
-                }
             } // ~ end of catch
         } // ~ end of if
     } // ~ end of method decode

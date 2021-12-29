@@ -37,7 +37,7 @@ public abstract class AbstractEndpoint extends AbstractPeer implements Resetable
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractEndpoint.class);
 
-    private Codec2 codec;
+    private Codec2 codec; // 编解码器
 
     private int connectTimeout;
 
@@ -47,14 +47,14 @@ public abstract class AbstractEndpoint extends AbstractPeer implements Resetable
         this.connectTimeout = url.getPositiveParameter(Constants.CONNECT_TIMEOUT_KEY, Constants.DEFAULT_CONNECT_TIMEOUT);
     }
 
-    protected static Codec2 getChannelCodec(URL url) {
+    protected static Codec2 getChannelCodec(URL url) { // 从URL中获得编解码器的配置 返回实例
         String codecName = url.getParameter(Constants.CODEC_KEY);
         if (StringUtils.isEmpty(codecName)) {
             // codec extension name must stay the same with protocol name
             codecName = url.getProtocol();
         }
         FrameworkModel frameworkModel = getFrameworkModel(url.getScopeModel());
-        if (frameworkModel.getExtensionLoader(Codec2.class).hasExtension(codecName)) {
+        if (frameworkModel.getExtensionLoader(Codec2.class).hasExtension(codecName)) { // 优先从Codec2的扩展类中找
             return frameworkModel.getExtensionLoader(Codec2.class).getExtension(codecName);
         } else {
             return new CodecAdapter(frameworkModel.getExtensionLoader(Codec.class)
@@ -70,7 +70,7 @@ public abstract class AbstractEndpoint extends AbstractPeer implements Resetable
         }
 
         try {
-            if (url.hasParameter(Constants.CONNECT_TIMEOUT_KEY)) {
+            if (url.hasParameter(Constants.CONNECT_TIMEOUT_KEY)) { // URL配置信息中携带了timeout信息就进行重置
                 int t = url.getParameter(Constants.CONNECT_TIMEOUT_KEY, 0);
                 if (t > 0) {
                     this.connectTimeout = t;

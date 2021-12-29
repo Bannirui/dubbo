@@ -29,7 +29,7 @@ public class ExecutionDispatcher implements Dispatcher {
 
     @Override
     public ChannelHandler dispatch(ChannelHandler handler, URL url) {
-        return new ExecutionChannelHandler(handler, url);
+        return new ExecutionChannelHandler(handler, url); // 线程池调度方法: 只有请求消息分发到线程池 其他都直接执行
     }
 
 }
