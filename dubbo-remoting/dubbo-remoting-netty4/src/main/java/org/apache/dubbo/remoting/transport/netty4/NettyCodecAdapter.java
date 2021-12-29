@@ -59,7 +59,7 @@ final public class NettyCodecAdapter {
         return decoder;
     }
 
-    private class InternalEncoder extends MessageToByteEncoder {
+    private class InternalEncoder extends MessageToByteEncoder { // 编码器的抽象
 
         @Override
         protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws Exception {
@@ -70,7 +70,7 @@ final public class NettyCodecAdapter {
         }
     }
 
-    private class InternalDecoder extends ByteToMessageDecoder {
+    private class InternalDecoder extends ByteToMessageDecoder { // 解码器抽象
 
         @Override
         protected void decode(ChannelHandlerContext ctx, ByteBuf input, List<Object> out) throws Exception {

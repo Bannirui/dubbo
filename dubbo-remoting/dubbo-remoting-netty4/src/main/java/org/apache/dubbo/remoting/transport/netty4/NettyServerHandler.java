@@ -70,10 +70,6 @@ public class NettyServerHandler extends ChannelDuplexHandler {
             channels.put(NetUtils.toAddressString((InetSocketAddress) ctx.channel().remoteAddress()), channel);
         }
         handler.connected(channel);
-
-        if (logger.isInfoEnabled()) {
-            logger.info("The connection of " + channel.getRemoteAddress() + " -> " + channel.getLocalAddress() + " is established.");
-        }
     }
 
     @Override
@@ -84,10 +80,6 @@ public class NettyServerHandler extends ChannelDuplexHandler {
             handler.disconnected(channel);
         } finally {
             NettyChannel.removeChannel(ctx.channel());
-        }
-
-        if (logger.isInfoEnabled()) {
-            logger.info("The connection of " + channel.getRemoteAddress() + " -> " + channel.getLocalAddress() + " is disconnected.");
         }
     }
 
@@ -111,7 +103,6 @@ public class NettyServerHandler extends ChannelDuplexHandler {
         if (evt instanceof IdleStateEvent) {
             NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
             try {
-                logger.info("IdleStateEvent triggered, close channel " + channel);
                 channel.close();
             } finally {
                 NettyChannel.removeChannelIfDisconnected(ctx.channel());

@@ -159,11 +159,11 @@ final class NettyChannel extends AbstractChannel {
         boolean success = true;
         int timeout = 0;
         try {
-            ChannelFuture future = channel.writeAndFlush(message);
-            if (sent) {
+            ChannelFuture future = channel.writeAndFlush(message); // 写入数据 发送消息
+            if (sent) { // 已经发送过
                 // wait timeout ms
                 timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
-                success = future.await(timeout);
+                success = future.await(timeout); // 等待timeout连接时间后查看是否发送成功
             }
             Throwable cause = future.cause();
             if (cause != null) {
@@ -184,25 +184,18 @@ final class NettyChannel extends AbstractChannel {
         try {
             super.close();
         } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
         }
         try {
-            removeChannelIfDisconnected(channel);
+            removeChannelIfDisconnected(channel); // 移除通道
         } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
         }
         try {
-            attributes.clear();
+            attributes.clear(); // 清理属性集合
         } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
         }
         try {
-            if (logger.isInfoEnabled()) {
-                logger.info("Close netty channel " + channel);
-            }
-            channel.close();
+            channel.close(); // 关闭通道
         } catch (Exception e) {
-            logger.warn(e.getMessage(), e);
         }
     }
 

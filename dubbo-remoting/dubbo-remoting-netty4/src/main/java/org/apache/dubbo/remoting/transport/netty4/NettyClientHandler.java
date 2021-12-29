@@ -58,9 +58,6 @@ public class NettyClientHandler extends ChannelDuplexHandler {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
         handler.connected(channel);
-        if (logger.isInfoEnabled()) {
-            logger.info("The connection of " + channel.getLocalAddress() + " -> " + channel.getRemoteAddress() + " is established.");
-        }
     }
 
     @Override
@@ -70,10 +67,6 @@ public class NettyClientHandler extends ChannelDuplexHandler {
             handler.disconnected(channel);
         } finally {
             NettyChannel.removeChannel(ctx.channel());
-        }
-
-        if (logger.isInfoEnabled()) {
-            logger.info("The connection of " + channel.getLocalAddress() + " -> " + channel.getRemoteAddress() + " is disconnected.");
         }
     }
 
@@ -114,9 +107,6 @@ public class NettyClientHandler extends ChannelDuplexHandler {
         if (evt instanceof IdleStateEvent) {
             try {
                 NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("IdleStateEvent triggered, send heartbeat to channel " + channel);
-                }
                 Request req = new Request();
                 req.setVersion(Version.getProtocolVersion());
                 req.setTwoWay(true);

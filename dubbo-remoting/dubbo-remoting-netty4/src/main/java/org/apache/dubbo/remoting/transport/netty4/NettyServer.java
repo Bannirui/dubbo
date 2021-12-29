@@ -95,14 +95,14 @@ public class NettyServer extends AbstractServer {
      */
     @Override
     protected void doOpen() throws Throwable {
-        bootstrap = new ServerBootstrap();
+        bootstrap = new ServerBootstrap(); // 创建服务引导类
 
-        bossGroup = NettyEventLoopFactory.eventLoopGroup(1, EVENT_LOOP_BOSS_POOL_NAME);
+        bossGroup = NettyEventLoopFactory.eventLoopGroup(1, EVENT_LOOP_BOSS_POOL_NAME); // boss线程组
         workerGroup = NettyEventLoopFactory.eventLoopGroup(
                 getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
-            EVENT_LOOP_WORKER_POOL_NAME);
+            EVENT_LOOP_WORKER_POOL_NAME); // worker线程组
 
-        final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this);
+        final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this); // 服务器处理器
         channels = nettyServerHandler.getChannels();
 
         boolean keepalive = getUrl().getParameter(KEEP_ALIVE_KEY, Boolean.FALSE);

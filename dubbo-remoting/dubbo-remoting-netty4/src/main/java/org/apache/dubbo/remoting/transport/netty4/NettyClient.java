@@ -95,8 +95,8 @@ public class NettyClient extends AbstractClient {
      */
     @Override
     protected void doOpen() throws Throwable {
-        final NettyClientHandler nettyClientHandler = new NettyClientHandler(getUrl(), this);
-        bootstrap = new Bootstrap();
+        final NettyClientHandler nettyClientHandler = new NettyClientHandler(getUrl(), this); // 创建客户端通道处理器
+        bootstrap = new Bootstrap(); // 创建引导类 设置可选项
         bootstrap.group(EVENT_LOOP_GROUP.get())
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
@@ -155,9 +155,6 @@ public class NettyClient extends AbstractClient {
                     Channel oldChannel = NettyClient.this.channel;
                     if (oldChannel != null) {
                         try {
-                            if (logger.isInfoEnabled()) {
-                                logger.info("Close old netty channel " + oldChannel + " on create new netty channel " + newChannel);
-                            }
                             oldChannel.close();
                         } finally {
                             NettyChannel.removeChannelIfDisconnected(oldChannel);
@@ -166,9 +163,6 @@ public class NettyClient extends AbstractClient {
                 } finally {
                     if (NettyClient.this.isClosed()) {
                         try {
-                            if (logger.isInfoEnabled()) {
-                                logger.info("Close new netty channel " + newChannel + ", because the client closed.");
-                            }
                             newChannel.close();
                         } finally {
                             NettyClient.this.channel = null;
