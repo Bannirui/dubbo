@@ -107,7 +107,6 @@ public class AccessLogFilter implements Filter {
                 log(accessLogKey, logData);
             }
         } catch (Throwable t) {
-            logger.warn("Exception in AccessLogFilter of service(" + invoker + " -> " + inv + ")", t);
         }
         return invoker.invoke(inv);
     }
@@ -118,7 +117,6 @@ public class AccessLogFilter implements Filter {
         if (logSet.size() < LOG_MAX_BUFFER) {
             logSet.add(accessLogData);
         } else {
-            logger.warn("AccessLog buffer is full. Do a force writing to file to clear buffer.");
             //just write current logSet to file.
             writeLogSetToFile(accessLog, logSet);
             //after force writing, add accessLogData to current logSet
@@ -133,14 +131,10 @@ public class AccessLogFilter implements Filter {
             } else {
                 File file = new File(accessLog);
                 createIfLogDirAbsent(file);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Append log to " + accessLog);
-                }
                 renameFile(file);
                 processWithAccessKeyLogger(logSet, file);
             }
         } catch (Exception e) {
-            logger.error(e.getMessage(), e);
         }
     }
 
