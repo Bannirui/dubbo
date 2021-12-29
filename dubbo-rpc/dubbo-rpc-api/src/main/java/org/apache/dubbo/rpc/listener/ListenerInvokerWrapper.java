@@ -35,7 +35,7 @@ public class ListenerInvokerWrapper<T> implements Invoker<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(ListenerInvokerWrapper.class);
 
-    private final Invoker<T> invoker;
+    private final Invoker<T> invoker; // invoker对象
 
     private final List<InvokerListener> listeners;
 
@@ -49,9 +49,8 @@ public class ListenerInvokerWrapper<T> implements Invoker<T> {
             for (InvokerListener listener : listeners) {
                 if (listener != null) {
                     try {
-                        listener.referred(invoker);
+                        listener.referred(invoker); // 调用在服务引用的时候进行监听
                     } catch (Throwable t) {
-                        logger.error(t.getMessage(), t);
                     }
                 }
             }
@@ -92,9 +91,8 @@ public class ListenerInvokerWrapper<T> implements Invoker<T> {
                 for (InvokerListener listener : listeners) {
                     if (listener != null) {
                         try {
-                            listener.destroyed(invoker);
+                            listener.destroyed(invoker); // 销毁所有监听的实体域
                         } catch (Throwable t) {
-                            logger.error(t.getMessage(), t);
                         }
                     }
                 }
