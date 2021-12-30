@@ -62,7 +62,7 @@ public class Proxy {
      * @return Proxy instance.
      */
     public static Proxy getProxy(Class<?>... ics) {
-        if (ics.length > MAX_PROXY_COUNT) {
+        if (ics.length > MAX_PROXY_COUNT) { // 代理的接口数量上限
             throw new IllegalArgumentException("interface limit exceeded");
         }
 

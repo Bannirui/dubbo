@@ -32,7 +32,7 @@ import java.util.Arrays;
 /**
  * JavassistRpcProxyFactory
  */
-public class JavassistProxyFactory extends AbstractProxyFactory {
+public class JavassistProxyFactory extends AbstractProxyFactory { // javassist实现的代理工厂
     private final static Logger logger = LoggerFactory.getLogger(JavassistProxyFactory.class);
     private final JdkProxyFactory jdkProxyFactory = new JdkProxyFactory();
 
@@ -74,16 +74,10 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
         } catch (Throwable fromJavassist) {
             // try fall back to JDK proxy factory
             try {
-                Invoker<T> invoker = jdkProxyFactory.getInvoker(proxy, type, url);
-                logger.error("Failed to generate proxy by Javassist failed. Fallback to use JDK proxy success. " +
-                    "Interfaces: " + type, fromJavassist);
+                Invoker<T> invoker = jdkProxyFactory.getInvoker(proxy, type, url); // javassist代理失败了再次尝试jdk动态代理
                 // log out error
                 return invoker;
             } catch (Throwable fromJdk) {
-                logger.error("Failed to generate proxy by Javassist failed. Fallback to use JDK proxy is also failed. " +
-                    "Interfaces: " + type + " Javassist Error.", fromJavassist);
-                logger.error("Failed to generate proxy by Javassist failed. Fallback to use JDK proxy is also failed. " +
-                    "Interfaces: " + type + " JDK Error.", fromJdk);
                 throw fromJavassist;
             }
         }

@@ -45,13 +45,13 @@ import static org.apache.dubbo.rpc.Constants.STUB_KEY;
 /**
  * StubProxyFactoryWrapper
  */
-public class StubProxyFactoryWrapper implements ProxyFactory {
+public class StubProxyFactoryWrapper implements ProxyFactory { // 实现了本地存根的逻辑
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StubProxyFactoryWrapper.class);
 
-    private final ProxyFactory proxyFactory;
+    private final ProxyFactory proxyFactory; // 代理工厂
 
-    private Protocol protocol;
+    private Protocol protocol; // 协议
 
     public StubProxyFactoryWrapper(ProxyFactory proxyFactory) {
         this.proxyFactory = proxyFactory;

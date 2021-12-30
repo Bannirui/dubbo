@@ -28,12 +28,12 @@ import java.lang.reflect.Proxy;
 /**
  * JdkRpcProxyFactory
  */
-public class JdkProxyFactory extends AbstractProxyFactory {
+public class JdkProxyFactory extends AbstractProxyFactory { // jdk代理工厂
 
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getProxy(Invoker<T> invoker, Class<?>[] interfaces) {
-        return (T) Proxy.newProxyInstance(invoker.getInterface().getClassLoader(), interfaces, new InvokerInvocationHandler(invoker));
+        return (T) Proxy.newProxyInstance(invoker.getInterface().getClassLoader(), interfaces, new InvokerInvocationHandler(invoker)); // 调用Proxy静态方法获取代理类
     }
 
     @Override

@@ -52,7 +52,7 @@ public abstract class AbstractProxyFactory implements ProxyFactory {
         // when compiling with native image, ensure that the order of the interfaces remains unchanged
         LinkedHashSet<Class<?>> interfaces = new LinkedHashSet<>();
 
-        String config = invoker.getUrl().getParameter(INTERFACES);
+        String config = invoker.getUrl().getParameter(INTERFACES); // 需要代理的接口
         if (StringUtils.isNotEmpty(config)) {
             String[] types = COMMA_SPLIT_PATTERN.split(config);
             for (String type : types) {
