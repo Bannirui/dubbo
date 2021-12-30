@@ -32,7 +32,7 @@ import java.util.List;
  *
  * @see org.apache.dubbo.rpc.cluster.Cluster#join(Directory)
  */
-public interface Directory<T> extends Node {
+public interface Directory<T> extends Node { // 目录接口 代表了多个invoker 它的值会随着注册中心的服务变更推送而变化 一个服务类型对应一个Directory
 
     /**
      * get service type.

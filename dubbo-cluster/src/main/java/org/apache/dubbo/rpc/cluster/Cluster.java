@@ -32,7 +32,7 @@ import org.apache.dubbo.rpc.model.ScopeModelUtil;
  *
  */
 @SPI(Cluster.DEFAULT)
-public interface Cluster {
+public interface Cluster { // 集群容错接口
 
     String DEFAULT = "failover";
 
