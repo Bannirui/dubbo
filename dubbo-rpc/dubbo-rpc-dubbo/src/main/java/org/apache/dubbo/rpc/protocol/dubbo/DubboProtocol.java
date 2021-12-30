@@ -90,7 +90,7 @@ import static org.apache.dubbo.rpc.protocol.dubbo.Constants.SHARE_CONNECTIONS_KE
 /**
  * dubbo protocol support.
  */
-public class DubboProtocol extends AbstractProtocol {
+public class DubboProtocol extends AbstractProtocol { // dubbo协议的核心
 
     public static final String NAME = "dubbo";
 
@@ -141,11 +141,7 @@ public class DubboProtocol extends AbstractProtocol {
                     }
                 }
                 if (!hasMethod) {
-                    logger.warn(new IllegalStateException("The methodName " + inv.getMethodName()
-                            + " not found in callback service interface ,invoke will be ignored."
-                            + " please update the api interface. url is:"
-                            + invoker.getUrl()) + " ,invocation is :" + inv);
-                    return null;
+                   return null;
                 }
             }
             RpcContext.getServiceContext().setRemoteAddress(channel.getRemoteAddress());
@@ -170,9 +166,6 @@ public class DubboProtocol extends AbstractProtocol {
 
         @Override
         public void disconnected(Channel channel) throws RemotingException {
-            if (logger.isDebugEnabled()) {
-                logger.debug("disconnected from " + channel.getRemoteAddress() + ",url:" + channel.getUrl());
-            }
             invoke(channel, ON_DISCONNECT_KEY);
         }
 
@@ -182,7 +175,6 @@ public class DubboProtocol extends AbstractProtocol {
                 try {
                     received(channel, invocation);
                 } catch (Throwable t) {
-                    logger.warn("Failed to invoke event method " + invocation.getMethodName() + "(), cause: " + t.getMessage(), t);
                 }
             }
         }
@@ -302,11 +294,6 @@ public class DubboProtocol extends AbstractProtocol {
         if (isStubSupportEvent && !isCallbackservice) {
             String stubServiceMethods = url.getParameter(STUB_EVENT_METHODS_KEY);
             if (stubServiceMethods == null || stubServiceMethods.length() == 0) {
-                if (logger.isWarnEnabled()) {
-                    logger.warn(new IllegalStateException("consumer [" + url.getParameter(INTERFACE_KEY) +
-                            "], has set stubproxy support event ,but no stub methods founded."));
-                }
-
             }
         }
 
@@ -385,9 +372,6 @@ public class DubboProtocol extends AbstractProtocol {
         if (StringUtils.isEmpty(className) || optimizers.contains(className)) {
             return;
         }
-
-        logger.info("Optimizing the serialization process for Kryo, FST, etc...");
-
         try {
             Class clazz = Thread.currentThread().getContextClassLoader().loadClass(className);
             if (!SerializationOptimizer.class.isAssignableFrom(clazz)) {
