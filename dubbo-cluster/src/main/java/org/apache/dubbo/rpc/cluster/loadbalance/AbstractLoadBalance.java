@@ -73,7 +73,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
      * @return weight
      */
     protected int getWeight(Invoker<?> invoker, Invocation invocation) {
-        int weight;
+        int weight; // 服务权重
         URL url = invoker.getUrl();
         // Multiple registry scenario, load balance among multiple registries.
         if (REGISTRY_SERVICE_REFERENCE_PATH.equals(url.getServiceInterface())) {
@@ -81,7 +81,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
         } else {
             weight = url.getMethodParameter(invocation.getMethodName(), WEIGHT_KEY, DEFAULT_WEIGHT);
             if (weight > 0) {
-                long timestamp = invoker.getUrl().getParameter(TIMESTAMP_KEY, 0L);
+                long timestamp = invoker.getUrl().getParameter(TIMESTAMP_KEY, 0L); // 启动时间戳
                 if (timestamp > 0L) {
                     long uptime = System.currentTimeMillis() - timestamp;
                     if (uptime < 0) {
