@@ -92,29 +92,21 @@ public abstract class AbstractProtocol implements Protocol, ScopeModelAware {
 
     @Override
     public void destroy() {
-        for (Invoker<?> invoker : invokers) {
+        for (Invoker<?> invoker : invokers) { // 遍历服务引用实体
             if (invoker != null) {
                 try {
-                    if (logger.isInfoEnabled()) {
-                        logger.info("Destroy reference: " + invoker.getUrl());
-                    }
-                    invoker.destroy();
+                    invoker.destroy(); // 销毁
                 } catch (Throwable t) {
-                    logger.warn(t.getMessage(), t);
                 }
             }
         }
         invokers.clear();
 
-        exporterMap.forEach((key, exporter)-> {
+        exporterMap.forEach((key, exporter)-> { // 遍历服务暴露者
             if (exporter != null) {
                 try {
-                    if (logger.isInfoEnabled()) {
-                        logger.info("Unexport service: " + exporter.getInvoker().getUrl());
-                    }
-                    exporter.unexport();
+                    exporter.unexport(); // 取消暴露
                 } catch (Throwable t) {
-                    logger.warn(t.getMessage(), t);
                 }
             }
         });
