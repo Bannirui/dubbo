@@ -586,28 +586,12 @@ public abstract class AbstractConfig implements Serializable {
             Map<String, String> subProperties = ConfigurationUtils.getSubProperties(instanceConfigMaps, preferredPrefix);
             InmemoryConfiguration subPropsConfiguration = new InmemoryConfiguration(subProperties);
 
-            if (logger.isDebugEnabled()) {
-                String idOrName = "";
-                if (StringUtils.hasText(this.getId())) {
-                    idOrName = "[id=" + this.getId() + "]";
-                } else {
-                    String name = ReflectUtils.getProperty(this, "getName");
-                    if (StringUtils.hasText(name)) {
-                        idOrName = "[name=" + name + "]";
-                    }
-                }
-                logger.debug("Refreshing " + this.getClass().getSimpleName() + idOrName +
-                    " with prefix [" + preferredPrefix +
-                    "], extracted props: " + subProperties);
-            }
-
             assignProperties(this, environment, subProperties, subPropsConfiguration);
 
             // process extra refresh of subclass, e.g. refresh method configs
             processExtraRefresh(preferredPrefix, subPropsConfiguration);
 
         } catch (Exception e) {
-            logger.error("Failed to override field value of config bean: " + this, e);
             throw new IllegalStateException("Failed to override field value of config bean: " + this, e);
         }
 

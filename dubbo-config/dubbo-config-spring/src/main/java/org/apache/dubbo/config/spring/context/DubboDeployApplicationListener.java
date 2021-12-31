@@ -93,10 +93,10 @@ public class DubboDeployApplicationListener implements ApplicationListener<Appli
     }
 
     @Override
-    public void onApplicationEvent(ApplicationContextEvent event) {
-        if (event instanceof ContextRefreshedEvent) {
+    public void onApplicationEvent(ApplicationContextEvent event) { // spring整合dubbo dubbo暴露的起点 当spring容器启动完毕后回调
+        if (event instanceof ContextRefreshedEvent) { // spring容器启动完毕
             onContextRefreshedEvent((ContextRefreshedEvent) event);
-        } else if (event instanceof ContextClosedEvent) {
+        } else if (event instanceof ContextClosedEvent) { // spring容器关闭
             onContextClosedEvent((ContextClosedEvent) event);
         }
     }
@@ -112,9 +112,7 @@ public class DubboDeployApplicationListener implements ApplicationListener<Appli
             try {
                 future.get();
             } catch (InterruptedException e) {
-                logger.warn("Interrupted while waiting for dubbo module start: " + e.getMessage());
             } catch (Exception e) {
-                logger.warn("An error occurred while waiting for dubbo module start: " + e.getMessage(), e);
             }
         }
     }
@@ -127,7 +125,6 @@ public class DubboDeployApplicationListener implements ApplicationListener<Appli
                 moduleModel.destroy();
             }
         } catch (Exception e) {
-            logger.error("An error occurred when stop dubbo module: " + e.getMessage(), e);
         }
         // remove context bind cache
         DubboSpringInitializer.remove(event.getApplicationContext());

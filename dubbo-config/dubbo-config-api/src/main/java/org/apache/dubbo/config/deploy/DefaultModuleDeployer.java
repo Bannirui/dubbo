@@ -139,7 +139,7 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
             initialize();
 
             // export services
-            exportServices();
+            exportServices(); // 暴露需要暴露的服务
 
             // prepare application instance
             // exclude internal module to avoid wait itself
@@ -240,7 +240,6 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
     private void onModuleStarting() {
         setStarting();
         startFuture = new CompletableFuture();
-        logger.info(getIdentifier() + " is starting.");
         applicationDeployer.notifyModuleChanged(moduleModel, DeployState.STARTING);
     }
 
@@ -292,7 +291,6 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
     private void onModuleStopped() {
         try {
             setStopped();
-            logger.info(getIdentifier() + " has stopped.");
             applicationDeployer.notifyModuleChanged(moduleModel, DeployState.STOPPED);
         } finally {
             completeStartFuture(false);
@@ -328,7 +326,6 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
                         exportedServices.add(sc);
                     }
                 } catch (Throwable t) {
-                    logger.error(getIdentifier() + " export async catch error : " + t.getMessage(), t);
                 }
             }, executor);
 
@@ -375,7 +372,6 @@ public class DefaultModuleDeployer extends AbstractDeployer<ModuleModel> impleme
                             try {
                                 referenceCache.get(rc);
                             } catch (Throwable t) {
-                                logger.error(getIdentifier() + " refer async catch error : " + t.getMessage(), t);
                             }
                         }, executor);
 

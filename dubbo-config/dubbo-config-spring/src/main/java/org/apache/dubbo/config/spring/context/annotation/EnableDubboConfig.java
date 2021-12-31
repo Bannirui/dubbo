@@ -67,7 +67,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-@Import(DubboConfigConfigurationRegistrar.class)
+@Import(DubboConfigConfigurationRegistrar.class) // 整合spring时向容器注入dubbo的beanDefinition
 public @interface EnableDubboConfig {
 
     /**

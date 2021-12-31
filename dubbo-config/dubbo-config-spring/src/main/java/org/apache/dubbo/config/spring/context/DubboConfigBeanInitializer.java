@@ -77,7 +77,7 @@ public class DubboConfigBeanInitializer implements BeanFactoryAware, Initializin
     }
 
     @Override
-    public void afterPropertiesSet() throws Exception {
+    public void afterPropertiesSet() throws Exception { // spring bd生命周期中回调
         init();
     }
 

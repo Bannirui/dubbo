@@ -35,7 +35,7 @@ public abstract class AbstractDeployer<E extends ScopeModel> implements Deployer
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractDeployer.class);
 
-    private volatile DeployState state = PENDING;
+    private volatile DeployState state = PENDING; // 标识状态 dubbo启动时: PENDING->STARTING
 
     private volatile Throwable lastError;
 
@@ -104,7 +104,7 @@ public abstract class AbstractDeployer<E extends ScopeModel> implements Deployer
     }
 
     protected void setStarting() {
-        this.state = STARTING;
+        this.state = STARTING; // dubbo启动状态标识更新
         for (DeployListener<E> listener : listeners) {
             try {
                 listener.onStarting(scopeModel);

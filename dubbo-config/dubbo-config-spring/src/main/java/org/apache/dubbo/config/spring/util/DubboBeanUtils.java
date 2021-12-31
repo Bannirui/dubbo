@@ -83,7 +83,7 @@ public interface DubboBeanUtils {
 //            DubboBootstrapApplicationListener.class);
 
         // register ApplicationListeners
-        registerInfrastructureBean(registry, DubboDeployApplicationListener.class.getName(), DubboDeployApplicationListener.class);
+        registerInfrastructureBean(registry, DubboDeployApplicationListener.class.getName(), DubboDeployApplicationListener.class); // 这个监听器在spring容器准备完毕之后会回调
         registerInfrastructureBean(registry, DubboConfigApplicationListener.class.getName(), DubboConfigApplicationListener.class);
 
         // Since 2.7.6 Register DubboConfigDefaultPropertyValueBeanPostProcessor as an infrastructure Bean
