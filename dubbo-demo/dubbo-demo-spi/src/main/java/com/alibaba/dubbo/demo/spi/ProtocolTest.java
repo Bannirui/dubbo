@@ -1,10 +1,18 @@
 package com.alibaba.dubbo.demo.spi;
 
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
+import com.alibaba.dubbo.common.extension.SPI;
 import com.alibaba.dubbo.rpc.Protocol;
 
 /**
- *
+ * <p>{@link Protocol}扩展点标注有{@link com.alibaba.dubbo.common.extension.SPI}注解 并且{@link SPI#value()}属性为dubbo 而且扩展点有两个方法被{@link com.alibaba.dubbo.common.extension.Adaptive}标注</p>
+ * <p>classpath配置的扩展实现候选有<ul>
+ *     <li>filter=com.alibaba.dubbo.rpc.protocol.ProtocolFilterWrapper</li>
+ *     <li>listener=com.alibaba.dubbo.rpc.protocol.ProtocolListenerWrapper</li>
+ *     <li>mock=com.alibaba.dubbo.rpc.support.MockProtocol</li>
+ * </ul>
+ * 这3个实现不存在被{@link com.alibaba.dubbo.common.extension.Adaptive}标注的类 有2个是包装类</p>
+ * 因此这个扩展点的自适应扩展实现是通过字节码编码反射方式创建出来的对象
  * @since 2022/5/19
  * @author dingrui
  */
@@ -14,8 +22,6 @@ public class ProtocolTest {
         ExtensionLoader<Protocol> extensionLoader = ExtensionLoader.getExtensionLoader(Protocol.class);
         Protocol refprotocol = extensionLoader.getAdaptiveExtension();
         System.out.println(refprotocol);
-        Protocol protocol = extensionLoader.getExtension("registry");
-        System.out.println(protocol);
     }
 }
 
@@ -23,7 +29,7 @@ public class ProtocolTest {
  * 生成的code
  */
 // package com.alibaba.dubbo.rpc;
-//         import com.alibaba.dubbo.common.extension.ExtensionLoader;
+// import com.alibaba.dubbo.common.extension.ExtensionLoader;
 // public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
 //     public void destroy() {throw new UnsupportedOperationException("method public abstract void com.alibaba.dubbo.rpc.Protocol.destroy() of interface com.alibaba.dubbo.rpc.Protocol is not adaptive method!");
 //     }

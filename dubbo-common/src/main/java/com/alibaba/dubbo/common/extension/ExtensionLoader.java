@@ -74,7 +74,7 @@ public class ExtensionLoader<T> {
 
     // ==============================
 
-    private final Class<?> type;
+    private final Class<?> type; // 扩展点(接口类型)
 
     /**
      * {@link ExtensionFactory}的实例
@@ -110,7 +110,7 @@ public class ExtensionLoader<T> {
      *   其次 硬编码技术生成适配的扩展实现
      */
     private volatile Class<?> cachedAdaptiveClass = null;
-    private String cachedDefaultName; // 标注在需要扩展的接口上的注解@SPI的value属性
+    private String cachedDefaultName; // 标注在需要扩展的接口上的注解@SPI的value属性 调用getExtension()根据扩展名称获取实现的时候 如果没有指定扩展名称就使用默认名称 这个默认名称就是扩展点上@SPI的属性
     private volatile Throwable createAdaptiveInstanceError;
 
     /**
@@ -314,10 +314,9 @@ public class ExtensionLoader<T> {
      */
     @SuppressWarnings("unchecked")
     public T getExtension(String name) {
-        if (name == null || name.length() == 0)
-            throw new IllegalArgumentException("Extension name == null");
+        if (name == null || name.length() == 0) throw new IllegalArgumentException("Extension name == null");
         if ("true".equals(name)) return getDefaultExtension();
-        Holder<Object> holder = cachedInstances.get(name);
+        Holder<Object> holder = this.cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
             holder = cachedInstances.get(name);
@@ -327,7 +326,7 @@ public class ExtensionLoader<T> {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
-                    instance = this.createExtension(name);
+                    instance = this.createExtension(name); // 缓存里面没有就去扫描里面找
                     holder.set(instance);
                 }
             }
@@ -340,11 +339,9 @@ public class ExtensionLoader<T> {
      */
     public T getDefaultExtension() {
         getExtensionClasses();
-        if (null == cachedDefaultName || cachedDefaultName.length() == 0
-                || "true".equals(cachedDefaultName)) {
+        if (null == cachedDefaultName || cachedDefaultName.length() == 0 || "true".equals(cachedDefaultName))
             return null;
-        }
-        return getExtension(cachedDefaultName);
+        return this.getExtension(cachedDefaultName);
     }
 
     public boolean hasExtension(String name) {
@@ -454,9 +451,9 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * <p>当前扩展接口的扩展实现<ul>
+     * <p>当前扩展接口的自适应扩展实现<ul>
      *     <li>取缓存</li>
-     *     <li>创建扩展点的扩展实现</li>
+     *     <li>创建扩展点的自适应扩展实现</li>
      *     <li>存缓存</li>
      * </ul></p>
      */
@@ -513,22 +510,19 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
-        Class<?> clazz = getExtensionClasses().get(name);
-        if (clazz == null) {
-            throw findException(name);
-        }
+        Class<?> clazz = this.getExtensionClasses().get(name); // 扫描classpath扩展实现的候选 类信息拿到了通过反射拿实例
+        if (clazz == null) throw findException(name);
         try {
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
-            injectExtension(instance);
+            this.injectExtension(instance); // 防止setter注入扩展的场景
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
-                for (Class<?> wrapperClass : wrapperClasses) {
-                    instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
-                }
+                for (Class<?> wrapperClass : wrapperClasses)
+                    instance = this.injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
             }
             return instance;
         } catch (Throwable t) {
@@ -537,7 +531,9 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * setxxx方法属性注入
+     * <p>解决扩展实现的循环依赖场景问题</p>
+     * <p>比如
+     * 某个扩展点的扩展实现已经获取 其中存在一个setter方法 设置的属性本身又是一个扩展实现</p>
      */
     private T injectExtension(T instance) {
         try {
@@ -549,16 +545,15 @@ public class ExtensionLoader<T> {
                         /**
                          * Check {@link DisableInject} to see if we need auto injection for this property
                          */
-                        if (method.getAnnotation(DisableInject.class) != null) {
+                        if (method.getAnnotation(DisableInject.class) != null)
                             continue;
-                        }
-                        Class<?> pt = method.getParameterTypes()[0];
+                        Class<?> pt = method.getParameterTypes()[0]; // setxxx这个setter方法的行参 肯定只有一个参数
                         try {
+                            // setxxx这个setter方法注入的属性名称xxx
                             String property = method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
-                            Object object = objectFactory.getExtension(pt, property);
-                            if (object != null) {
+                            Object object = this.objectFactory.getExtension(pt, property); // 获取setter参数的扩展实现 目的是为了解决扩展实现里面的setter属性注入的依赖
+                            if (object != null)
                                 method.invoke(instance, object);
-                            }
                         } catch (Exception e) {
                             logger.error("fail to inject via method " + method.getName()
                                     + " of interface " + type.getName() + ": " + e.getMessage(), e);
@@ -591,7 +586,7 @@ public class ExtensionLoader<T> {
      * 对上面3个路径进行扫描 找到扩展点(需要扩展的接口)的配置文件
      * 轮询配置文件里面的所有键值对(key=名称 value=扩展点的扩展实现)
      * 解析过程中
-     *   如果扩展实现上注有{@link Adaptive}注解 就把这个实现缓存在{@link ExtensionLoader#cachedAdaptiveClass}
+     *   如果扩展实现上注有{@link Adaptive}注解 就把这个实现缓存在{@link ExtensionLoader#cachedAdaptiveClass} 这个实现就是{@link ExtensionLoader#type}这个扩展点的自适应扩展实现适配类
      *   扩展实现是包装类 全部缓存到{@link ExtensionLoader#cachedWrapperClasses}
      *   其他扩展实现都缓存到{@link ExtensionLoader#cachedClasses}
      */
@@ -751,9 +746,20 @@ public class ExtensionLoader<T> {
         return extension.value();
     }
 
+    /**
+     * <p>依赖{@link ExtensionLoader}这个扩展实现加载器 为扩展点{@link ExtensionLoader#type}创建合适的自适应扩展实现</p>
+     */
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            /**
+             * <p>3个方法<ul>
+             *     <li>injectExtension() - 解决扩展实现的setter属性注入依赖的问题</li>
+             *     <li>getAdaptiveExtensionClass() - 通过扩展加载器获取到扩展点的自适应扩展实现的java类</li>
+             *     <li>newInstance() - jdk内置的{@link Class#newInstance()}方法反射创建实例</li>
+             * </ul>
+             * 其中 第2个方法是核心</p>
+             */
             return this.injectExtension((T) this.getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can not create adaptive extension " + type + ", cause: " + e.getMessage(), e);
@@ -761,19 +767,21 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * 扩展接口的实现类
-     * 后续拿着类通过反射创建实例
+     * <p>通过扩展加载器获取到扩展点的自适应扩展实现的java类<ul>
+     *     <li>扫描配置的classpath的扩展实现候选</li>
+     *     <li>如果候选实现中存在某个实现类是被{@link Adaptive}修饰的 就缓存起来 作为自适应扩展适配类</li>
+     *     <li>code生成的方式对扩展点中被{@link Adaptive}修饰的方法进行编码 字节码技术生成类</li>
+     * </ul></p>
      */
     private Class<?> getAdaptiveExtensionClass() {
         this.getExtensionClasses(); // 加载所有扩展接口指定的实现方式
-        if (this.cachedAdaptiveClass != null) { // 扫描加载落站实现的时候会将@Adaptive注解标识的实现缓存起来作为扩展适配的第一优先级
+        if (this.cachedAdaptiveClass != null) // 扫描加载落站实现的时候会将@Adaptive注解标识的实现缓存起来作为扩展适配的第一优先级
             return this.cachedAdaptiveClass;
-        }
         return this.cachedAdaptiveClass = this.createAdaptiveExtensionClass(); // 没有@Adaptive注解指定默认的扩展实现 使用编码技术生成
     }
 
     /**
-     * <p>扩展接口的实现类</p>
+     * <p>code生成的方式对扩展点中被{@link Adaptive}修饰的方法进行编码 字节码技术生成类</p>
      */
     private Class<?> createAdaptiveExtensionClass() {
         String code = this.createAdaptiveExtensionClassCode(); // 硬编码扩展接口的实现类(方法标注@Adaptive()注解的)
@@ -783,7 +791,7 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * 生成code
+     * <p>将扩展点{@link ExtensionLoader#type}中所有被{@link Adaptive}修饰的方法 生成编码</p>
      */
     private String createAdaptiveExtensionClassCode() {
         StringBuilder codeBuilder = new StringBuilder();
@@ -804,18 +812,18 @@ public class ExtensionLoader<T> {
         codeBuilder.append("\nimport ").append(ExtensionLoader.class.getName()).append(";");
         codeBuilder.append("\npublic class ").append(type.getSimpleName()).append("$Adaptive").append(" implements ").append(type.getCanonicalName()).append(" {");
 
-        for (Method method : methods) {
-            Class<?> rt = method.getReturnType();
-            Class<?>[] pts = method.getParameterTypes();
-            Class<?>[] ets = method.getExceptionTypes();
+        for (Method method : methods) { // 轮询扩展点里面所有的方法
+            Class<?> rt = method.getReturnType(); // 方法的返回值类型
+            Class<?>[] pts = method.getParameterTypes(); // 方法的入参类型
+            Class<?>[] ets = method.getExceptionTypes(); // 方法的异常类型
 
             Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
             StringBuilder code = new StringBuilder(512);
             if (adaptiveAnnotation == null) {
                 code.append("throw new UnsupportedOperationException(\"method ").append(method.toString()).append(" of interface ").append(type.getName()).append(" is not adaptive method!\");");
             } else {
-                int urlTypeIndex = -1;
-                for (int i = 0; i < pts.length; ++i) {
+                int urlTypeIndex = -1; // 标识方法参数列表中是否有URL类型的行参 或者虽然行参不是直接URL类型但是这个类型有getxxx的方法可以返回URL -1表示不存在
+                for (int i = 0; i < pts.length; ++i) { // 轮询方法参数列表 记下URL类型的参数数组脚标 因为URL封装了所有的配置信息
                     if (pts[i].equals(URL.class)) {
                         urlTypeIndex = i;
                         break;
@@ -834,10 +842,10 @@ public class ExtensionLoader<T> {
                 else { // 没有参数类型是URL类型的方法
                     String attribMethod = null;
 
-                    // find URL getter method
+                    // find URL getter method // 轮询所有的参数类型 但凡找到一个getxxx的getter方法的返回值是URL类型就标识出来 如果压根不存在这样的一个获取URL的getter方法 那就无法创建自适应扩展实现的编码 因为所有的配置信息都封装在URL中 没有URL就无法在运行时进行自适应扩展
                     LBL_PTS:
                     for (int i = 0; i < pts.length; ++i) {
-                        Method[] ms = pts[i].getMethods();
+                        Method[] ms = pts[i].getMethods(); // 行参也是个类型 这个类型的方法列表
                         for (Method m : ms) {
                             String name = m.getName();
                             if ((name.startsWith("get") || name.length() > 3)
@@ -862,11 +870,11 @@ public class ExtensionLoader<T> {
                     s = String.format("%s url = arg%d.%s();", URL.class.getName(), urlTypeIndex, attribMethod);
                     code.append(s);
                 }
-
+                // @Adaptive的value()属性
                 String[] value = adaptiveAnnotation.value();
                 // value is not set, use the value generated from class name as the key
                 if (value.length == 0) {
-                    char[] charArray = type.getSimpleName().toCharArray();
+                    char[] charArray = this.type.getSimpleName().toCharArray(); // 扩展点的名称
                     StringBuilder sb = new StringBuilder(128);
                     for (int i = 0; i < charArray.length; i++) {
                         if (Character.isUpperCase(charArray[i])) {
@@ -928,7 +936,7 @@ public class ExtensionLoader<T> {
                 String s = String.format("\nif(extName == null) " + "throw new IllegalStateException(\"Fail to get extension(%s) name from url(\" + url.toString() + \") use keys(%s)\");", type.getName(), Arrays.toString(value));
                 code.append(s);
 
-                // 核心
+                // 核心 根据dubbo SPI扩展方式获取扩展点的自适应扩展实现
                 s = String.format("\n%s extension = (%<s)%s.getExtensionLoader(%s.class).getExtension(extName);", type.getName(), ExtensionLoader.class.getSimpleName(), type.getName());
                 code.append(s);
 

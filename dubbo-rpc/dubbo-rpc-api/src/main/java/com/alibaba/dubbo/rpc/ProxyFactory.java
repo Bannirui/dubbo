@@ -24,6 +24,12 @@ import com.alibaba.dubbo.common.extension.SPI;
 /**
  * ProxyFactory. (API/SPI, Singleton, ThreadSafe)
  */
+
+/**
+ * <p>配置信息都封装在了{@link URL}中 通过{@link URL#getParameter}获取指定key的配置 如果不存在指定key的配置 就使用默认值defaultValue</p>
+ * <p>通过生成code的方式对当前扩展点的{@link Adaptive}修饰的方法进行生成 调用{@link com.alibaba.dubbo.common.extension.ExtensionLoader#getExtension}方式生成自适应扩展实现
+ * 扩展名称从{@link URL}中获取{@link Constants#PROXY_KEY} 如果不存在这个key的配置值 就使用给定默认值javassist</p>
+ */
 @SPI("javassist")
 public interface ProxyFactory {
 
