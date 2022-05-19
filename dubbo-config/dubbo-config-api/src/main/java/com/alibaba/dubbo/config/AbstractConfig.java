@@ -89,17 +89,31 @@ public abstract class AbstractConfig implements Serializable {
         return value;
     }
 
+    /**
+     * <p>尝试调用xxxConfig中的setter方法设置配置项<ul>
+     *     <li>{@link ConsumerConfig}</li>
+     *     <li>{@link ApplicationConfig}</li>
+     * </ul></p>
+     */
     protected static void appendProperties(AbstractConfig config) {
-        if (config == null) {
-            return;
-        }
+        if (config == null) return; // 要从配置类实例中获取对应的配置项
+        // dubbo.consumer.
         String prefix = "dubbo." + getTagName(config.getClass()) + ".";
+        /**
+         * {@link ConsumerConfig}的方法
+         */
         Method[] methods = config.getClass().getMethods();
         for (Method method : methods) {
             try {
                 String name = method.getName();
-                if (name.length() > 3 && name.startsWith("set") && Modifier.isPublic(method.getModifiers())
-                        && method.getParameterTypes().length == 1 && isPrimitive(method.getParameterTypes()[0])) {
+                // 找到所有的setxxx的setter方法
+                if (name.length() > 3
+                        && name.startsWith("set")
+                        && Modifier.isPublic(method.getModifiers())
+                        && method.getParameterTypes().length == 1
+                        && isPrimitive(method.getParameterTypes()[0])
+                ) {
+                    // name就是setxxx -> 将xxx首字母小写 -> xxx标准的驼峰 -> .作为分隔符的命名
                     String property = StringUtils.camelToSplitName(name.substring(3, 4).toLowerCase() + name.substring(4), ".");
 
                     String value = null;
@@ -111,7 +125,7 @@ public abstract class AbstractConfig implements Serializable {
                         }
                     }
                     if (value == null || value.length() == 0) {
-                        String pn = prefix + property;
+                        String pn = prefix + property; // dubbo.consumer.xxx
                         value = System.getProperty(pn);
                         if (!StringUtils.isBlank(value)) {
                             logger.info("Use System Property " + pn + " to config dubbo");
@@ -120,6 +134,7 @@ public abstract class AbstractConfig implements Serializable {
                     if (value == null || value.length() == 0) {
                         Method getter;
                         try {
+                            // xxx属性对应的getter方法
                             getter = config.getClass().getMethod("get" + name.substring(3));
                         } catch (NoSuchMethodException e) {
                             try {
@@ -156,6 +171,11 @@ public abstract class AbstractConfig implements Serializable {
         }
     }
 
+    /**
+     * <p>标识类cls的作用 <ul>
+     *     <li>{@link ConsumerConfig}->consumer</li>
+     * </ul></p>
+     */
     private static String getTagName(Class<?> cls) {
         String tag = cls.getSimpleName();
         for (String suffix : SUFFIXES) {

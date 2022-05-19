@@ -89,7 +89,7 @@ public abstract class AbstractReferenceConfig extends AbstractInterfaceConfig {
     }
 
     public String getGeneric() {
-        return generic;
+        return this.generic;
     }
 
     public void setGeneric(String generic) {

@@ -383,12 +383,16 @@ public final class StringUtils {
         return buf.toString();
     }
 
+    /**
+     * <p>驼峰命名改成指定分隔符的<ul>
+     *     <li>name -> name</li>
+     *     <li>yourName -> your.name</li>
+     * </ul></p>
+     */
     public static String camelToSplitName(String camelName, String split) {
-        if (camelName == null || camelName.length() == 0) {
-            return camelName;
-        }
+        if (camelName == null || camelName.length() == 0) return camelName; // 入参校验
         StringBuilder buf = null;
-        for (int i = 0; i < camelName.length(); i++) {
+        for (int i = 0, len=camelName.length(); i < len; i++) {
             char ch = camelName.charAt(i);
             if (ch >= 'A' && ch <= 'Z') {
                 if (buf == null) {

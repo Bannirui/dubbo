@@ -32,6 +32,11 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getProxy(Invoker<T> invoker, Class<?>[] interfaces) {
+        /**
+         * Proxy.getProxy()通过字节码技术生成了一个代理对象 暴露了一个newInstance()的方法 维护了一个InvocationHandler的属性
+         * 因此这个地方一定是像代理对象中赋值了InvocationHandler属性
+         * 后续调用该代理对象的方法是 实际是委托给了InvocationHandler进行处理
+         */
         return (T) Proxy.getProxy(interfaces).newInstance(new InvokerInvocationHandler(invoker));
     }
 

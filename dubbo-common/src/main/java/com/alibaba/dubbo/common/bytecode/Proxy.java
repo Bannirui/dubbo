@@ -24,13 +24,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -54,7 +48,7 @@ public abstract class Proxy {
     private static final String PACKAGE_NAME = Proxy.class.getPackage().getName();
     private static final Map<ClassLoader, Map<String, Object>> ProxyCacheMap = new WeakHashMap<ClassLoader, Map<String, Object>>();
 
-    private static final Object PendingGenerationMarker = new Object();
+    private static final Object PendingGenerationMarker = new Object(); // 标识位 标识即将准备创建代理对象
 
     protected Proxy() {
     }
@@ -82,7 +76,7 @@ public abstract class Proxy {
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ics.length; i++) {
-            String itf = ics[i].getName();
+            String itf = ics[i].getName(); // 接口全限定名
             if (!ics[i].isInterface())
                 throw new RuntimeException(itf + " is not a interface.");
 
@@ -99,7 +93,7 @@ public abstract class Proxy {
         }
 
         // use interface class name list as key.
-        String key = sb.toString();
+        String key = sb.toString(); // 接口全限定名 多个用;作为分隔符
 
         // get cache by class loader.
         Map<String, Object> cache;
@@ -121,13 +115,13 @@ public abstract class Proxy {
                         return proxy;
                 }
 
-                if (value == PendingGenerationMarker) {
+                if (value == PendingGenerationMarker) { // 如果已经有线程占位了 说明其他线程已经开始创建代理对象了 当前线程阻塞起来 等待唤醒
                     try {
                         cache.wait();
                     } catch (InterruptedException e) {
                     }
                 } else {
-                    cache.put(key, PendingGenerationMarker);
+                    cache.put(key, PendingGenerationMarker); // 占位符 标识即将开始创建代理对象
                     break;
                 }
             }
@@ -157,7 +151,7 @@ public abstract class Proxy {
 
                 for (Method method : ics[i].getMethods()) {
                     String desc = ReflectUtils.getDesc(method);
-                    if (worked.contains(desc))
+                    if (worked.contains(desc)) // 接口方法的签名唯一 判断是否已经在创建过程中
                         continue;
                     worked.add(desc);
 
@@ -181,10 +175,10 @@ public abstract class Proxy {
                 pkg = PACKAGE_NAME;
 
             // create ProxyInstance class.
-            String pcn = pkg + ".proxy" + id;
+            String pcn = pkg + ".proxy" + id; // 包名
             ccp.setClassName(pcn);
             ccp.addField("public static java.lang.reflect.Method[] methods;");
-            ccp.addField("private " + InvocationHandler.class.getName() + " handler;");
+            ccp.addField("private " + InvocationHandler.class.getName() + " handler;"); // 代理对象中维护了一个InvocationHandler
             ccp.addConstructor(Modifier.PUBLIC, new Class<?>[]{InvocationHandler.class}, new Class<?>[0], "handler=$1;");
             ccp.addDefaultConstructor();
             Class<?> clazz = ccp.toClass();
@@ -196,6 +190,7 @@ public abstract class Proxy {
             ccm.setClassName(fcn);
             ccm.addDefaultConstructor();
             ccm.setSuperClass(Proxy.class);
+            // 核心方法 对外界暴露了一个newInstance()方法 接受的入参类型是InvocationHandler
             ccm.addMethod("public Object newInstance(" + InvocationHandler.class.getName() + " h){ return new " + pcn + "($1); }");
             Class<?> pc = ccm.toClass();
             proxy = (Proxy) pc.newInstance();
