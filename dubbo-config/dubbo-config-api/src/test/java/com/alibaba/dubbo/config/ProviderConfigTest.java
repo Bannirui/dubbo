@@ -216,4 +216,13 @@ public class ProviderConfigTest {
         provider.setWait(10);
         assertThat(provider.getWait(), equalTo(10));
     }
+
+    @Test
+    public void test00() {
+        ProviderConfig cfg = new ProviderConfig();
+        ProviderConfig.appendProperties(cfg);
+        Map<String, String> m = new HashMap<>();
+        ProviderConfig.appendParameters(m, cfg);
+        System.out.println(m.toString());
+    }
 }

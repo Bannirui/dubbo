@@ -90,43 +90,43 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     /**
-     * <p>尝试调用xxxConfig中的setter方法设置配置项<ul>
-     *     <li>{@link ConsumerConfig}</li>
-     *     <li>{@link ApplicationConfig}</li>
-     * </ul></p>
+     * 为Config的field到VM参数中找是否配置过值写回到Config中
+     *     - ProviderConfig->dubbo.provider.xxx
      */
     protected static void appendProperties(AbstractConfig config) {
         if (config == null) return; // 要从配置类实例中获取对应的配置项
-        // dubbo.consumer.
-        String prefix = "dubbo." + getTagName(config.getClass()) + ".";
         /**
-         * {@link ConsumerConfig}的方法
+         * 配置项名称
+         *     - dubbo.provider.
+         *     - dubbo.application.
+         *     - dubbo.consumer.
          */
+        String prefix = "dubbo." + getTagName(config.getClass()) + ".";
         Method[] methods = config.getClass().getMethods();
         for (Method method : methods) {
             try {
                 String name = method.getName();
-                // 找到所有的setxxx的setter方法
+                // setter方法
                 if (name.length() > 3
                         && name.startsWith("set")
                         && Modifier.isPublic(method.getModifiers())
                         && method.getParameterTypes().length == 1
                         && isPrimitive(method.getParameterTypes()[0])
                 ) {
-                    // name就是setxxx -> 将xxx首字母小写 -> xxx标准的驼峰 -> .作为分隔符的命名
+                    // field名称
                     String property = StringUtils.camelToSplitName(name.substring(3, 4).toLowerCase() + name.substring(4), ".");
 
                     String value = null;
                     if (config.getId() != null && config.getId().length() > 0) {
-                        String pn = prefix + config.getId() + "." + property;
-                        value = System.getProperty(pn);
+                        String pn = prefix + config.getId() + "." + property; // field映射的配置名称
+                        value = System.getProperty(pn); // field映射的配置值
                         if (!StringUtils.isBlank(value)) {
                             logger.info("Use System Property " + pn + " to config dubbo");
                         }
                     }
                     if (value == null || value.length() == 0) {
-                        String pn = prefix + property; // dubbo.consumer.xxx
-                        value = System.getProperty(pn);
+                        String pn = prefix + property; // field映射的配置名称
+                        value = System.getProperty(pn); // field映射的配置值
                         if (!StringUtils.isBlank(value)) {
                             logger.info("Use System Property " + pn + " to config dubbo");
                         }
@@ -134,7 +134,7 @@ public abstract class AbstractConfig implements Serializable {
                     if (value == null || value.length() == 0) {
                         Method getter;
                         try {
-                            // xxx属性对应的getter方法
+                            // field的getter方法
                             getter = config.getClass().getMethod("get" + name.substring(3));
                         } catch (NoSuchMethodException e) {
                             try {
@@ -161,6 +161,7 @@ public abstract class AbstractConfig implements Serializable {
                             }
                         }
                     }
+                    // field根据映射规则作为配置key到VM参数中找是否配置过值 写到Config中
                     if (value != null && value.length() > 0) {
                         method.invoke(config, convertPrimitive(method.getParameterTypes()[0], value));
                     }
@@ -172,19 +173,20 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     /**
-     * <p>标识类cls的作用 <ul>
-     *     <li>{@link ConsumerConfig}->consumer</li>
-     * </ul></p>
+     * 以Config和Bean为后缀的类名前缀
+     *     - ApplicationConfig->application
+     *     - ProviderConfig->provider
+     *     - ConsumerConfig->consumer
      */
     private static String getTagName(Class<?> cls) {
-        String tag = cls.getSimpleName();
+        String tag = cls.getSimpleName(); // 类名
         for (String suffix : SUFFIXES) {
             if (tag.endsWith(suffix)) {
-                tag = tag.substring(0, tag.length() - suffix.length());
+                tag = tag.substring(0, tag.length() - suffix.length()); // 相当于类名前缀
                 break;
             }
         }
-        tag = tag.toLowerCase();
+        tag = tag.toLowerCase(); // 类名首写大写改小写
         return tag;
     }
 

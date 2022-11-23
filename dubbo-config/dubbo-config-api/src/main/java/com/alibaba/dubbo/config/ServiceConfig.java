@@ -82,8 +82,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private final List<URL> urls = new ArrayList<URL>();
     private final List<Exporter<?>> exporters = new ArrayList<Exporter<?>>();
     // interface type
-    private String interfaceName; // provider提供的服务
-    private Class<?> interfaceClass; // 提供的服务抽象
+    private String interfaceName; // 提供的服务接口名
+    private Class<?> interfaceClass; // 提供的服务接口
     // reference to interface impl
     private T ref; // 范型 指向暴露的接口的具体实现
     // service name
@@ -93,7 +93,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private ProviderConfig provider;
     private transient volatile boolean exported; // 标识provider已经暴露服务
 
-    private transient volatile boolean unexported; // 标识provider还没暴露服务
+    private transient volatile boolean unexported;
 
     private volatile String generic;
 
@@ -215,7 +215,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 }
             }, delay, TimeUnit.MILLISECONDS);
         } else {
-            doExport();
+            this.doExport();
         }
     }
 
@@ -224,10 +224,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (exported)
             return;
         this.exported = true; // 标识provider已经启动
-        if (interfaceName == null || interfaceName.length() == 0)
+        if (this.interfaceName == null || interfaceName.length() == 0)
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
-        checkDefault();
-        if (provider != null) {
+        // 尝试从VM参数找一下是否有对Provider设置的配置项写回到ProviderConfig中去
+        this.checkDefault();
+        if (this.provider != null) {
             if (application == null)
                 application = provider.getApplication();
             if (module == null)
@@ -258,13 +259,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         } else {
             try {
+                // 接口名反射出接口的类
                 this.interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
-            checkInterfaceAndMethods(interfaceClass, methods);
-            checkRef();
-            generic = Boolean.FALSE.toString();
+            this.checkInterfaceAndMethods(interfaceClass, methods);
+            this.checkRef(); // 校验暴露的服务实现跟接口是合法的
+            generic = Boolean.FALSE.toString(); // false
         }
         if (local != null) {
             if ("true".equals(local)) {
@@ -309,7 +311,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         ApplicationModel.initProviderModel(getUniqueServiceName(), providerModel);
     }
 
-    private void checkRef() {
+    private void checkRef() { // 校验接口的实现跟接口是合法的
         // reference should not be null, and is the implementation of the given interface
         if (ref == null) {
             throw new IllegalStateException("ref not allow null!");
@@ -688,8 +690,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     private void checkDefault() {
-        if (provider == null)
+        if (this.provider == null)
             provider = new ProviderConfig();
+        // 尝试从VM参数找一下是否有对Provider设置的配置项写回到ProviderConfig中去
         appendProperties(provider);
     }
 
@@ -751,8 +754,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     public void setInterface(Class<?> interfaceClass) {
         if (interfaceClass != null && !interfaceClass.isInterface())
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
-        this.interfaceClass = interfaceClass;
-        setInterface(interfaceClass == null ? null : interfaceClass.getName());
+        this.interfaceClass = interfaceClass; // 服务接口
+        this.setInterface(interfaceClass == null ? null : interfaceClass.getName());
     }
 
     public T getRef() {

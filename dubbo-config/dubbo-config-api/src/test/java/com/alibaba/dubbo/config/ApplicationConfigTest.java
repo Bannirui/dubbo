@@ -177,11 +177,20 @@ public class ApplicationConfigTest {
     }
 
     @Test
-    public void testDefaultConstructor00(){
-        Map<String, String> map =new HashMap<>();
+    public void testDefaultConstructor00() {
+        Map<String, String> map = new HashMap<>();
         ApplicationConfig cfg = new ApplicationConfig();
         ApplicationConfig.appendParameters(map, cfg);
         String ans = map.toString();
         System.out.println();
+    }
+
+    @Test
+    public void test00() {
+        ApplicationConfig cfg = new ApplicationConfig("test00");
+        ApplicationConfig.appendProperties(cfg);
+        Map<String, String> m = new HashMap<>();
+        ApplicationConfig.appendParameters(m, cfg);
+        System.out.println(m.toString());
     }
 }
