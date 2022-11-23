@@ -19,7 +19,10 @@ public class ApiConsumer {
 
         // 连接注册中心配置
         RegistryConfig registry = new RegistryConfig();
-        registry.setAddress("multicast://224.5.6.7:1234");
+        // multicast协议
+        // registry.setAddress("multicast://224.5.6.7:1234");
+        // zk协议
+        registry.setAddress("zookeeper://localhost:2181");
 
         // 引用远程服务 此实例很重，封装了与注册中心的连接以及与提供者的连接
         ReferenceConfig<DemoService> reference = new ReferenceConfig<DemoService>();

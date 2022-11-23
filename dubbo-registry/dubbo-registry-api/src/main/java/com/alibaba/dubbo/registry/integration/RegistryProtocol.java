@@ -287,7 +287,7 @@ public class RegistryProtocol implements Protocol {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
-        return doRefer(cluster, registry, type, url);
+        return this.doRefer(cluster, registry, type, url);
     }
 
     private Cluster getMergeableCluster() {

@@ -85,13 +85,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private String interfaceName;
     private Class<?> interfaceClass;
     // reference to interface impl
-    private T ref;
+    private T ref; // 范型 指向暴露的接口的具体实现
     // service name
     private String path;
     // method configuration
     private List<MethodConfig> methods;
     private ProviderConfig provider;
-    private transient volatile boolean exported;
+    private transient volatile boolean exported; // 标识provider已经启动
 
     private transient volatile boolean unexported;
 
@@ -220,49 +220,36 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     protected synchronized void doExport() {
-        if (unexported) {
-            throw new IllegalStateException("Already unexported!");
-        }
-        if (exported) {
+        if (unexported) throw new IllegalStateException("Already unexported!");
+        if (exported)
             return;
-        }
-        exported = true;
-        if (interfaceName == null || interfaceName.length() == 0) {
+        exported = true; //
+        if (interfaceName == null || interfaceName.length() == 0)
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
-        }
         checkDefault();
         if (provider != null) {
-            if (application == null) {
+            if (application == null)
                 application = provider.getApplication();
-            }
-            if (module == null) {
+            if (module == null)
                 module = provider.getModule();
-            }
-            if (registries == null) {
+            if (registries == null)
                 registries = provider.getRegistries();
-            }
-            if (monitor == null) {
+            if (monitor == null)
                 monitor = provider.getMonitor();
-            }
-            if (protocols == null) {
+            if (protocols == null)
                 protocols = provider.getProtocols();
-            }
         }
         if (module != null) {
-            if (registries == null) {
+            if (registries == null)
                 registries = module.getRegistries();
-            }
-            if (monitor == null) {
+            if (monitor == null)
                 monitor = module.getMonitor();
-            }
         }
         if (application != null) {
-            if (registries == null) {
+            if (registries == null)
                 registries = application.getRegistries();
-            }
-            if (monitor == null) {
+            if (monitor == null)
                 monitor = application.getMonitor();
-            }
         }
         if (ref instanceof GenericService) {
             interfaceClass = GenericService.class;
@@ -271,8 +258,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         } else {
             try {
-                interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
-                        .getContextClassLoader());
+                interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
@@ -702,9 +688,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     private void checkDefault() {
-        if (provider == null) {
+        if (provider == null)
             provider = new ProviderConfig();
-        }
         appendProperties(provider);
     }
 
@@ -764,9 +749,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public void setInterface(Class<?> interfaceClass) {
-        if (interfaceClass != null && !interfaceClass.isInterface()) {
+        if (interfaceClass != null && !interfaceClass.isInterface())
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
-        }
         this.interfaceClass = interfaceClass;
         setInterface(interfaceClass == null ? null : interfaceClass.getName());
     }

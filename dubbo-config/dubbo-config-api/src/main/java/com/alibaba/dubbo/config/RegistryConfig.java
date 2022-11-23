@@ -31,7 +31,7 @@ public class RegistryConfig extends AbstractConfig {
     public static final String NO_AVAILABLE = "N/A";
     private static final long serialVersionUID = 5508512956753757169L;
     // register center address
-    private String address;
+    private String address; // multicast://224.5.6.7:1234 // zookeeper://localhost:2181
 
     // username to login register center
     private String username;

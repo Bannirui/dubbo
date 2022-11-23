@@ -25,7 +25,10 @@ public class ApiProvider {
 
         // 连接注册中心配置
         RegistryConfig registry = new RegistryConfig();
-        registry.setAddress("multicast://224.5.6.7:1234");
+        // multicast协议
+        // registry.setAddress("multicast://224.5.6.7:1234");
+        // zk协议
+        registry.setAddress("zookeeper://localhost:2181");
 
         // 服务提供者协议配置
         ProtocolConfig protocol = new ProtocolConfig();

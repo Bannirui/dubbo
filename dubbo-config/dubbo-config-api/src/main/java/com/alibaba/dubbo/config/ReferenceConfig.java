@@ -406,6 +406,13 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
 
             if (this.urls.size() == 1) {
+                /**
+                 * 生成code的方式反射出Protocol$Adaptive实例对象
+                 * {@link Protocol#refer}这个{@link com.alibaba.dubbo.common.extension.Adaptive}方法预留了扩展点
+                 * 扩展名就是{@link URL#getProtocol()} 如果URL中不存在配置就使用dubbo作为默认
+                 * 当前URL携带的配置是registry
+                 * 因此refprotocol指向的真是的实现是{@link com.alibaba.dubbo.registry.integration.RegistryProtocol}
+                 */
                 this.invoker = refprotocol.refer(interfaceClass, this.urls.get(0)); // 配置被封装在了URL中
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
