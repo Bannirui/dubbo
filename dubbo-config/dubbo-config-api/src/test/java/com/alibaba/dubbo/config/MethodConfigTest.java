@@ -232,4 +232,13 @@ public class MethodConfigTest {
         method.setReturn(true);
         assertThat(method.isReturn(), is(true));
     }
+
+    @Test
+    public void testDefaultConstructor00(){
+        Map<String, String> map =new HashMap<>();
+        MethodConfig cfg = new MethodConfig();
+        ApplicationConfig.appendParameters(map, cfg);
+        String ans = map.toString();
+        System.out.println();
+    }
 }

@@ -35,6 +35,7 @@
         <module>dubbo-demo-spi</module>
         <module>dubbo-demo-spi-jdk</module>
         <module>dubbo-demo-invoker</module>
+        <module>dubbo-study-unit-test</module>
     </modules>
 
     <dependencyManagement>

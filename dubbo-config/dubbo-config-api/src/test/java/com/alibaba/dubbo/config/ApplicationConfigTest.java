@@ -171,7 +171,17 @@ public class ApplicationConfigTest {
         Map<String, String> parameters = new HashMap<String, String>();
         parameters.put("k1", "v1");
         ApplicationConfig.appendParameters(parameters, application);
+        String s = parameters.toString();
         assertThat(parameters, hasEntry("k1", "v1"));
         assertThat(parameters, hasEntry(Constants.ACCEPT_FOREIGN_IP, "true"));
+    }
+
+    @Test
+    public void testDefaultConstructor00(){
+        Map<String, String> map =new HashMap<>();
+        ApplicationConfig cfg = new ApplicationConfig();
+        ApplicationConfig.appendParameters(map, cfg);
+        String ans = map.toString();
+        System.out.println();
     }
 }

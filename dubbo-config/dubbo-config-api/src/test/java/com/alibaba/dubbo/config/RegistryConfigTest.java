@@ -172,4 +172,13 @@ public class RegistryConfigTest {
         registry.setDefault(true);
         assertThat(registry.isDefault(), is(true));
     }
+
+    @Test
+    public void testDefaultConstructor00(){
+        Map<String, String> map =new HashMap<>();
+        RegistryConfig cfg = new RegistryConfig();
+        ApplicationConfig.appendParameters(map, cfg);
+        String ans = map.toString();
+        System.out.println();
+    }
 }

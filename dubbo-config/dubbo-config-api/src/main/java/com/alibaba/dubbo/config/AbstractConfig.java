@@ -188,10 +188,17 @@ public abstract class AbstractConfig implements Serializable {
         return tag;
     }
 
-    protected static void appendParameters(Map<String, String> parameters, Object config) {
+    protected static void appendParameters(Map<String, String> parameters, Object config) { // config中配置信息放到map中
         appendParameters(parameters, config, null);
     }
 
+    /**
+     * config中所有field做key 属性值做value
+     *     - key通过field上注解自定义指定
+     *     - key使用field名称
+     * prefix是key前缀
+     * 配置信息全部取出来放到哈希表中
+     */
     @SuppressWarnings("unchecked")
     protected static void appendParameters(Map<String, String> parameters, Object config, String prefix) {
         if (config == null) {
@@ -201,24 +208,32 @@ public abstract class AbstractConfig implements Serializable {
         for (Method method : methods) {
             try {
                 String name = method.getName();
+                /**
+                 * getter方法
+                 *     - getxxx
+                 *     - isxxx
+                 */
                 if ((name.startsWith("get") || name.startsWith("is"))
                         && !"getClass".equals(name)
                         && Modifier.isPublic(method.getModifiers())
                         && method.getParameterTypes().length == 0
                         && isPrimitive(method.getReturnType())) {
+                    // 每个域上面通过自定义注解定义了field映射的key
                     Parameter parameter = method.getAnnotation(Parameter.class);
                     if (method.getReturnType() == Object.class || parameter != null && parameter.excluded()) {
                         continue;
                     }
                     int i = name.startsWith("get") ? 3 : 2;
+                    // 域field名称
                     String prop = StringUtils.camelToSplitName(name.substring(i, i + 1).toLowerCase() + name.substring(i + 1), ".");
                     String key;
+                    // 有注解指定用注解 没注解指定用field名称
                     if (parameter != null && parameter.key().length() > 0) {
                         key = parameter.key();
                     } else {
                         key = prop;
                     }
-                    Object value = method.invoke(config);
+                    Object value = method.invoke(config); // getter()方法执行结果
                     String str = String.valueOf(value).trim();
                     if (value != null && str.length() > 0) {
                         if (parameter != null && parameter.escaped()) {
@@ -238,7 +253,7 @@ public abstract class AbstractConfig implements Serializable {
                             key = prefix + "." + key;
                         }
                         parameters.put(key, str);
-                    } else if (parameter != null && parameter.required()) {
+                    } else if (parameter != null && parameter.required()) { // 某些Config中的field不能为空 ApplicationConfig和ModuleConfig中的name不能为空
                         throw new IllegalStateException(config.getClass().getSimpleName() + "." + key + " == null");
                     }
                 } else if ("getParameters".equals(name)

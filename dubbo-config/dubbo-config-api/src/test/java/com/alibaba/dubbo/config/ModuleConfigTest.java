@@ -107,4 +107,13 @@ public class ModuleConfigTest {
         module.setDefault(true);
         assertThat(module.isDefault(), is(true));
     }
+
+    @Test
+    public void testDefaultConstructor00(){
+        Map<String, String> map =new HashMap<>();
+        ModuleConfig cfg = new ModuleConfig();
+        ApplicationConfig.appendParameters(map, cfg);
+        String ans = map.toString();
+        System.out.println();
+    }
 }

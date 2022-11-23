@@ -82,8 +82,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private final List<URL> urls = new ArrayList<URL>();
     private final List<Exporter<?>> exporters = new ArrayList<Exporter<?>>();
     // interface type
-    private String interfaceName;
-    private Class<?> interfaceClass;
+    private String interfaceName; // provider提供的服务
+    private Class<?> interfaceClass; // 提供的服务抽象
     // reference to interface impl
     private T ref; // 范型 指向暴露的接口的具体实现
     // service name
@@ -91,9 +91,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     // method configuration
     private List<MethodConfig> methods;
     private ProviderConfig provider;
-    private transient volatile boolean exported; // 标识provider已经启动
+    private transient volatile boolean exported; // 标识provider已经暴露服务
 
-    private transient volatile boolean unexported;
+    private transient volatile boolean unexported; // 标识provider还没暴露服务
 
     private volatile String generic;
 
@@ -223,7 +223,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (unexported) throw new IllegalStateException("Already unexported!");
         if (exported)
             return;
-        exported = true; //
+        this.exported = true; // 标识provider已经启动
         if (interfaceName == null || interfaceName.length() == 0)
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
         checkDefault();
@@ -258,7 +258,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         } else {
             try {
-                interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
+                this.interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }

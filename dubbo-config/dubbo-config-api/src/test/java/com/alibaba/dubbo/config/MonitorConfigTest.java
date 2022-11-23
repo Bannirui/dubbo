@@ -104,4 +104,13 @@ public class MonitorConfigTest {
         monitor.setInterval("100");
         assertThat(monitor.getInterval(), equalTo("100"));
     }
+
+    @Test
+    public void testDefaultConstructor00(){
+        Map<String, String> map =new HashMap<>();
+        MonitorConfig cfg = new MonitorConfig();
+        ApplicationConfig.appendParameters(map, cfg);
+        String ans = map.toString();
+        System.out.println();
+    }
 }

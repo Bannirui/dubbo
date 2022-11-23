@@ -16,39 +16,15 @@ import java.io.IOException;
 public class ApiProvider {
 
     public static void main(String[] args) throws IOException {
-        // 服务实现
-        DemoService demoService = new DemoServiceImpl();
-
-        // 当前应用配置
-        ApplicationConfig application = new ApplicationConfig();
-        application.setName("demo-provider");
-
-        // 连接注册中心配置
-        RegistryConfig registry = new RegistryConfig();
-        // multicast协议
-        // registry.setAddress("multicast://224.5.6.7:1234");
-        // zk协议
-        registry.setAddress("zookeeper://localhost:2181");
-
-        // 服务提供者协议配置
-        ProtocolConfig protocol = new ProtocolConfig();
-        protocol.setName("dubbo");
-        protocol.setPort(20880);
-        protocol.setThreads(200);
-
         // 服务提供者暴露服务配置 封装了与注册中心的连接
         ServiceConfig<DemoService> service = new ServiceConfig<DemoService>();
-        service.setApplication(application);
-        // 注册中心
-        service.setRegistry(registry);
-        // 协议
-        service.setProtocol(protocol);
+        service.setApplication(new ApplicationConfig("native-provider")); // 应用配置
+        service.setRegistry(new RegistryConfig("zookeeper://localhost:2181")); // 注册中心
+        service.setProtocol(new ProtocolConfig("dubbo", 20880)); // 协议
         service.setInterface(DemoService.class);
-        service.setRef(demoService);
-
+        service.setRef(new DemoServiceImpl()); // 提供的服务实现
         // 暴露及注册服务
         service.export();
-
         System.in.read();
     }
 }

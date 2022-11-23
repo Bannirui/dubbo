@@ -254,7 +254,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
     /**
-     * <p>实现不为空的情况下 接口是否存在对应的实现 如果不存在接口的实现就抛出异常</p>
+     * 实现不为空的情况下 接口是否存在对应的实现 如果不存在接口的实现就抛出异常
      */
     protected void checkInterfaceAndMethods(Class<?> interfaceClass, List<MethodConfig> methods) {
         // interface cannot be null
