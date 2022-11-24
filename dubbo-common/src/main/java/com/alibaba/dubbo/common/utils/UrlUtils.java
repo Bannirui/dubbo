@@ -27,15 +27,24 @@ import java.util.Set;
 
 public class UrlUtils {
 
+    /**
+     * address
+     *     - 基础信息
+     *         - 指定了协议://ip:port
+     *         - 没指定协议
+     *             - 单台服务器 ip:port
+     *             - 多服务器 ip1:port1.ip2:port2
+     *     - 把hash表中信息追加到地址后面连接
+     */
     public static URL parseURL(String address, Map<String, String> defaults) {
         if (address == null || address.length() == 0) {
             return null;
         }
         String url;
-        if (address.indexOf("://") >= 0) {
+        if (address.indexOf("://") >= 0) { // 地址中指定了协议
             url = address;
         } else {
-            String[] addresses = Constants.COMMA_SPLIT_PATTERN.split(address);
+            String[] addresses = Constants.COMMA_SPLIT_PATTERN.split(address); // 多个服务器用,分割符
             url = addresses[0];
             if (addresses.length > 1) {
                 StringBuilder backup = new StringBuilder();
@@ -48,6 +57,13 @@ public class UrlUtils {
                 url += "?" + Constants.BACKUP_KEY + "=" + backup.toString();
             }
         }
+        /**
+         * 到此为止url无非就3中格式
+         *     - 指定了协议 protocol://ip:port
+         *     - 没有指定协议
+         *         - 只有一台主机 ip1:port1
+         *         - 多台主机 ip1:port1?backup=ip2:port2,ip3:port3
+         */
         String defaultProtocol = defaults == null ? null : defaults.get("protocol");
         if (defaultProtocol == null || defaultProtocol.length() == 0) {
             defaultProtocol = "dubbo";
@@ -124,17 +140,24 @@ public class UrlUtils {
         return u;
     }
 
+    /**
+     * address中用;分割多个地址
+     * 一个地址信息的基本信息
+     *     - 协议://ip:port
+     *     - 附加的其他信息追加到后面
+     * 将hash表中配置信息拼接到地址中
+     */
     public static List<URL> parseURLs(String address, Map<String, String> defaults) {
         if (address == null || address.length() == 0) {
             return null;
         }
-        String[] addresses = Constants.REGISTRY_SPLIT_PATTERN.split(address);
+        String[] addresses = Constants.REGISTRY_SPLIT_PATTERN.split(address); // 分割符多个地址
         if (addresses == null || addresses.length == 0) {
             return null; //here won't be empty
         }
         List<URL> registries = new ArrayList<URL>();
         for (String addr : addresses) {
-            registries.add(parseURL(addr, defaults));
+            registries.add(parseURL(addr, defaults)); // 单条地址
         }
         return registries;
     }

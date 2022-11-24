@@ -124,7 +124,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                     + ", Please add <dubbo:registry address=\"...\" /> to your spring config. If you want unregister, please set <dubbo:service registry=\"N/A\" />");
         }
         for (RegistryConfig registryConfig : registries) {
-            appendProperties(registryConfig);
+            appendProperties(registryConfig); // 尝试为RegistryConfig到VM参数中load配置
         }
     }
 
@@ -155,22 +155,34 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
     protected List<URL> loadRegistries(boolean provider) {
-        checkRegistry();
+        checkRegistry(); // 尝试为RegistryConfig到VM参数中load配置
         List<URL> registryList = new ArrayList<URL>();
         if (this.registries == null || this.registries.isEmpty()) return registryList;
         for (RegistryConfig config : this.registries) {
-            String address = config.getAddress(); // 注册中心地址 // multicast://224.5.6.7:1234 // zookeeper://localhost:2181
+            /**
+             * 启动提供者指定的注册中心地址
+             *     - zookeeper://localhost:2181
+             *     - multicast://224.5.6.7:1234
+             */
+            String address = config.getAddress();
             if (address == null || address.length() == 0) {
                 address = Constants.ANYHOST_VALUE;
             }
-            String sysaddress = System.getProperty("dubbo.registry.address");
+            String sysaddress = System.getProperty("dubbo.registry.address"); // 配置在VM参数中的注册中心地址
             if (sysaddress != null && sysaddress.length() > 0) {
                 address = sysaddress;
             }
-            if (address.length() > 0 && !RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) { // 定义了远程注册中心
+            if (address.length() > 0 && !RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) { // 注册中心地址有效
                 Map<String, String> map = new HashMap<String, String>();
-                appendParameters(map, this.application); // 应用配置信息->map
-                appendParameters(map, config); // 注册中心信息->map
+                /**
+                 * ApplicationConfig配置信息写到hash表中
+                 *     - application->native-provider
+                 *
+                 * RegistryConfig配置信息写到hash表中
+                 *     - qos.port=22222
+                 */
+                appendParameters(map, this.application);
+                appendParameters(map, config);
                 map.put("path", RegistryService.class.getName());
                 map.put("dubbo", Version.getProtocolVersion());
                 map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
@@ -184,6 +196,16 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                         map.put("protocol", "dubbo");
                     }
                 }
+                /**
+                 * 往map中添点配置信息
+                 *     - path->com.alibaba.dubbo.registry.RegistryService
+                 *     - dubbo->2.0.2
+                 *     - timestamp->?
+                 *     - pid->?
+                 *     - protocol->dubbo
+                 *
+                 * 注册中心地址zookeeper://localhost:2181
+                 */
                 List<URL> urls = UrlUtils.parseURLs(address, map);
                 for (URL url : urls) {
                     url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());

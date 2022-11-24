@@ -335,4 +335,63 @@ public class UrlUtilsTest {
         pattern = pattern.addParameter(Constants.VERSION_KEY, "*");
         assertTrue(UrlUtils.isServiceKeyMatch(pattern, value));
     }
+
+    @Test
+    public void test00() {
+        /**
+         * 往map中添点配置信息
+         *     - application->native-provider
+         *     - qos.port=22222
+         *     - path->com.alibaba.dubbo.registry.RegistryService
+         *     - dubbo->2.0.2
+         *     - timestamp->?
+         *     - pid->?
+         *     - protocol->dubbo
+         * address=zookeeper://localhost:2181
+         */
+        String address = "zookeeper://localhost:2181";
+        Map<String, String> map = new HashMap<String, String>() {{
+            put("application", "native-provider");
+            put("qos.port", "22222");
+            put("protocol", "dubbo");
+        }};
+        List<URL> urls = UrlUtils.parseURLs("protocol1://ip1:1234;protocol2://ip2:6789", map);
+        System.out.println();
+    }
+
+    @Test
+    public void test01() {
+        String address = "zookeeper://localhost:2181";
+        Map<String, String> map = new HashMap<String, String>() {{
+            put("application", "native-provider");
+            put("qos.port", "22222");
+            put("protocol", "dubbo");
+        }};
+        URL url = UrlUtils.parseURL(address, map);
+        System.out.println();
+    }
+
+    @Test
+    public void test02() {
+        String address = "localhost:2181";
+        Map<String, String> map = new HashMap<String, String>() {{
+            put("application", "native-provider");
+            put("qos.port", "22222");
+            put("protocol", "dubbo");
+        }};
+        URL url = UrlUtils.parseURL(address, map);
+        System.out.println();
+    }
+
+    @Test
+    public void test03() {
+        String address = "localhost:2181,localhost:2182";
+        Map<String, String> map = new HashMap<String, String>() {{
+            put("application", "native-provider");
+            put("qos.port", "22222");
+            put("protocol", "dubbo");
+        }};
+        URL url = UrlUtils.parseURL(address, map);
+        System.out.println();
+    }
 }

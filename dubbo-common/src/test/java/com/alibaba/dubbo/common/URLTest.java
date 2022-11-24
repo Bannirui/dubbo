@@ -652,4 +652,16 @@ public class URLTest {
         assertEquals("1.0.0", url.getParameter("version"));
         assertEquals("morgan", url.getParameter("application"));
     }
+
+    @Test
+    public void test00(){
+        URL url = URL.valueOf("zookeeper://localhost:2181");
+        System.out.println();
+    }
+
+    @Test
+    public void test01(){
+        URL url = URL.valueOf("zookeeper://bannrui:123@localhost:2181");
+        System.out.println();
+    }
 }

@@ -68,11 +68,19 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see java.net.URL
  * @see java.net.URI
  */
+
+/**
+ * 自定义了URL
+ * 跟标准互联网URL比 多了3个部分
+ *     - username
+ *     - password
+ *     - parameters
+ */
 public final class URL implements Serializable {
 
     private static final long serialVersionUID = -1985165475234910535L;
 
-    private final String protocol;
+    private final String protocol; // 协议
 
     private final String username;
 
@@ -84,7 +92,7 @@ public final class URL implements Serializable {
     // by default, port to registry
     private final int port;
 
-    private final String path;
+    private final String path; // 路径
 
     private final Map<String, String> parameters;
 
@@ -176,6 +184,11 @@ public final class URL implements Serializable {
      * @return URL instance
      * @see URL
      */
+    /**
+     * 协议://用户名:密码@ip:port/路径
+     *     - zookeeper://localhost:2181
+     *     - zookeeper://bannirui:123456@localhost:2181
+     */
     public static URL valueOf(String url) {
         if (url == null || (url = url.trim()).length() == 0) {
             throw new IllegalArgumentException("url == null");
@@ -187,9 +200,9 @@ public final class URL implements Serializable {
         int port = 0;
         String path = null;
         Map<String, String> parameters = null;
-        int i = url.indexOf("?"); // seperator between body and parameters 
+        int i = url.indexOf("?"); // seperator between body and parameters // 基础内容之外的附加信息?连接
         if (i >= 0) {
-            String[] parts = url.substring(i + 1).split("\\&");
+            String[] parts = url.substring(i + 1).split("\\&"); // 每一项基础内容&连接
             parameters = new HashMap<String, String>();
             for (String part : parts) {
                 part = part.trim();
@@ -211,7 +224,7 @@ public final class URL implements Serializable {
             url = url.substring(0, poundIndex);
         }
 
-        i = url.indexOf("://");
+        i = url.indexOf("://"); // 协议分割符
         if (i >= 0) {
             if (i == 0) throw new IllegalStateException("url missing protocol: \"" + url + "\"");
             protocol = url.substring(0, i);

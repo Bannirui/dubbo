@@ -87,7 +87,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     // reference to interface impl
     private T ref; // 范型 指向暴露的接口的具体实现
     // service name
-    private String path;
+    private String path; // 暴露的服务名称(接口全限定名)
     // method configuration
     private List<MethodConfig> methods;
     private ProviderConfig provider;
@@ -296,16 +296,16 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 throw new IllegalStateException("The stub implementation class " + stubClass.getName() + " not implement interface " + interfaceName);
             }
         }
-        checkApplication();
-        checkRegistry();
-        checkProtocol();
-        appendProperties(this);
+        checkApplication(); // 尝试为ApplicationConfig到VM参数中load配置
+        checkRegistry(); // 尝试为RegistryConfig到VM参数中load配置
+        checkProtocol(); // 尝试为ProtocolConfig到VM参数中load配置
+        appendProperties(this); // 尝试为ServiceConfig到VM参数中load配置
         checkStub(interfaceClass);
         checkMock(interfaceClass);
         if (path == null || path.length() == 0) {
             path = interfaceName;
         }
-        doExportUrls();
+        this.doExportUrls();
         CodecSupport.addProviderSupportedSerialization(getUniqueServiceName(), getExportedUrls());
         ProviderModel providerModel = new ProviderModel(getUniqueServiceName(), this, ref);
         ApplicationModel.initProviderModel(getUniqueServiceName(), providerModel);
@@ -709,7 +709,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (StringUtils.isEmpty(protocolConfig.getName())) {
                 protocolConfig.setName(Constants.DUBBO_VERSION_KEY);
             }
-            appendProperties(protocolConfig);
+            appendProperties(protocolConfig); // 尝试为ProtocolConfig到VM参数中load配置
         }
     }
 
