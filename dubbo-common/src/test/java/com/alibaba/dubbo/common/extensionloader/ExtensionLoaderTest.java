@@ -18,6 +18,7 @@ package com.alibaba.dubbo.common.extensionloader;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.extension.ExtensionFactory;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.common.extensionloader.activate.ActivateExt1;
 import com.alibaba.dubbo.common.extensionloader.activate.impl.ActivateExt1Impl1;
@@ -428,4 +429,10 @@ public class ExtensionLoaderTest {
         org.junit.Assert.assertNull(injectExtImpl.getGenericType());
     }
 
+    @Test
+    public void test00(){
+        ExtensionLoader<ExtensionFactory> el = ExtensionLoader.getExtensionLoader(ExtensionFactory.class);
+        ExtensionFactory ans = el.getAdaptiveExtension();
+        System.out.println();
+    }
 }
