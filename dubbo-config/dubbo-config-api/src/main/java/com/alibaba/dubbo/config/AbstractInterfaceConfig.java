@@ -154,6 +154,12 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         }
     }
 
+    /**
+     * 加载注册中心配置
+     * provider
+     *     - true 生产者加载注册中心配置
+     *     - false 消费者加载注册中心配置
+     */
     protected List<URL> loadRegistries(boolean provider) {
         checkRegistry(); // 尝试为RegistryConfig到VM参数中load配置
         List<URL> registryList = new ArrayList<URL>();
@@ -206,10 +212,15 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                  *
                  * 注册中心地址zookeeper://localhost:2181
                  */
-                List<URL> urls = UrlUtils.parseURLs(address, map);
+                List<URL> urls = UrlUtils.parseURLs(address, map); // 配置信息写到URL中
                 for (URL url : urls) {
                     url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());
                     url = url.setProtocol(Constants.REGISTRY_PROTOCOL);
+                    /**
+                     * 注册中心作用
+                     *     - 对于生产者 注册要暴露的服务信息
+                     *     - 对于消费者 订阅服务信息
+                     */
                     if ((provider && url.getParameter(Constants.REGISTER_KEY, true))
                             || (!provider && url.getParameter(Constants.SUBSCRIBE_KEY, true))) {
                         registryList.add(url);
