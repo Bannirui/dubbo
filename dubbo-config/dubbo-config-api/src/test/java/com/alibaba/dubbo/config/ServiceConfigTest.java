@@ -19,6 +19,7 @@ package com.alibaba.dubbo.config;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.config.api.DemoService;
 import com.alibaba.dubbo.config.api.Greeting;
 import com.alibaba.dubbo.config.mock.TestProxyFactory;
@@ -29,6 +30,7 @@ import com.alibaba.dubbo.registry.Registry;
 import com.alibaba.dubbo.rpc.Exporter;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.Protocol;
+import com.alibaba.dubbo.rpc.ProxyFactory;
 import com.alibaba.dubbo.rpc.service.GenericService;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -213,5 +215,11 @@ public class ServiceConfigTest {
         service.setInterface(Greeting.class);
         service.setVersion("1.0.0");
         assertThat(service.getUniqueServiceName(), equalTo("dubbo/" + Greeting.class.getName() + ":1.0.0"));
+    }
+
+    @Test
+    public void test00(){
+        ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
+        System.out.println();
     }
 }

@@ -42,10 +42,10 @@ public abstract class AbstractServiceConfig extends AbstractInterfaceConfig {
     protected Boolean deprecated;
 
     // delay service exporting
-    protected Integer delay;
+    protected Integer delay; // 标识生产者的服务是否需要延迟导出
 
     // whether to export the service
-    protected Boolean export;
+    protected Boolean export; // 标识是否需要导出生产者的服务
 
     // weight
     protected Integer weight;

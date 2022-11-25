@@ -23,7 +23,7 @@ public class ApiProvider {
         service.setProtocol(new ProtocolConfig("dubbo", 20880)); // 协议
         service.setInterface(DemoService.class);
         service.setRef(new DemoServiceImpl()); // 提供的服务实现
-        // 暴露及注册服务
+        // 服务导出
         service.export();
         System.in.read();
     }

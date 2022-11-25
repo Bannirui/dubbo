@@ -72,7 +72,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     private static final long serialVersionUID = 3033787999037024738L;
 
-    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension(); // DubboProtocol实现
+    private static final Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
 
     private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
@@ -95,7 +95,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     private transient volatile boolean unexported;
 
-    private volatile String generic;
+    private volatile String generic; // 标识生产者导出的服务是泛化服务
 
     public ServiceConfig() {
     }
@@ -215,7 +215,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 }
             }, delay, TimeUnit.MILLISECONDS);
         } else {
-            this.doExport();
+            this.doExport(); // 前置检查
         }
     }
 
@@ -252,12 +252,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (monitor == null)
                 monitor = application.getMonitor();
         }
-        if (ref instanceof GenericService) {
+        if (ref instanceof GenericService) { // 要导出的服务是泛化服务类型
             interfaceClass = GenericService.class;
             if (StringUtils.isEmpty(generic)) {
                 generic = Boolean.TRUE.toString();
             }
-        } else {
+        } else { // 要导出服务不是泛化类型
             try {
                 // 接口名反射出接口的类
                 this.interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
@@ -305,6 +305,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (path == null || path.length() == 0) {
             path = interfaceName;
         }
+        /**
+         * 导出服务
+         */
         this.doExportUrls();
         CodecSupport.addProviderSupportedSerialization(getUniqueServiceName(), getExportedUrls());
         ProviderModel providerModel = new ProviderModel(getUniqueServiceName(), this, ref);
@@ -345,9 +348,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        /**
+         * 允许多协议多注册中心导出服务
+         *     - 允许使用不同的协议导出服务
+         *     - 也允许向多个注册中心注册服务
+         */
         List<URL> registryURLs = super.loadRegistries(true); // 生产者加载注册中心配置
         for (ProtocolConfig protocolConfig : protocols) {
-            doExportUrlsFor1Protocol(protocolConfig, registryURLs);
+            this.doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
 
@@ -483,10 +491,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!Constants.SCOPE_REMOTE.toString().equalsIgnoreCase(scope)) {
-                // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49771&qos.port=22222&side=provider&timestamp=1669285279449
+                /**
+                 * 导出到本地
+                 * dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49771&qos.port=22222&side=provider&timestamp=1669285279449
+                 */
                 this.exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
+            // 导出到远程
             if (!Constants.SCOPE_LOCAL.toString().equalsIgnoreCase(scope)) {
                 if (logger.isInfoEnabled()) {
                     logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
@@ -494,8 +506,10 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 if (registryURLs != null && !registryURLs.isEmpty()) {
                     for (URL registryURL : registryURLs) {
                         url = url.addParameterIfAbsent(Constants.DYNAMIC_KEY, registryURL.getParameter(Constants.DYNAMIC_KEY));
+                        // 加载监视器连接
                         URL monitorUrl = loadMonitor(registryURL);
                         if (monitorUrl != null) {
+                            // 将监视器连接作为参数添加到url中
                             url = url.addParameterAndEncoded(Constants.MONITOR_KEY, monitorUrl.toFullString());
                         }
                         if (logger.isInfoEnabled()) {
@@ -503,18 +517,37 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         }
 
                         // For providers, this is used to enable custom proxy to generate invoker
-                        String proxy = url.getParameter(Constants.PROXY_KEY);
+                        String proxy = url.getParameter(Constants.PROXY_KEY); // proxy配置项影响到Invoker实现选择
                         if (StringUtils.isNotEmpty(proxy)) {
                             registryURL = registryURL.addParameter(Constants.PROXY_KEY, proxy);
                         }
 
+                        /**
+                         * 为服务提供类生成Invoker
+                         * registryURL
+                         *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&pid=88742&qos.port=22222&registry=zookeeper&timestamp=1669353705349
+                         * url
+                         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=88742&qos.port=22222&side=provider&timestamp=1669353705363
+                         * proxyFactory的实现
+                         *     - 默认JavassistProxyFactory
+                         *     - URL中配置项proxy指定名称
+                         * 这个地方registryURL中没有配置proxy 使用JavassistProxyFactory
+                         */
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
+
+                        /**
+                         * 导出服务生成Exporter
+                         * protocol的实现
+                         *     - 默认DubboProtocol
+                         *     - URL中协议protocol指定名称选择实现
+                         * 这个地方Invoker中getURL()中的就是上面的RegistryURL 协议是registry 使用的实现是RegistryProtocol
+                         */
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);
                     }
-                } else {
+                } else { // 没有注册中心 仅仅导出服务
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
@@ -528,13 +561,21 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void exportLocal(URL url) {
+        // URL协议头等于injvm说明已经导出到了本地 不需要再次导出了
         if (!Constants.LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) { // dubbo
-            // injvm://127.0.0.1/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49970&qos.port=22222&side=provider&timestamp=1669285554307
             URL local = URL.valueOf(url.toFullString())
                     .setProtocol(Constants.LOCAL_PROTOCOL)
                     .setHost(LOCALHOST)
                     .setPort(0);
+            // injvm://127.0.0.1/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49970&qos.port=22222&side=provider&timestamp=1669285554307
             StaticContext.getContext(Constants.SERVICE_IMPL_CLASS).put(url.getServiceKey(), getServiceClass(ref));
+            /**
+             * 创建Invoker 并导出服务
+             *     - 创建Invoker 默认javassist或者配置项
+             *         - URL中没有配置proxy 创建Invoker使用的实现是JavassistProxyFactory
+             *     - 导出服务 默认dubbo或者URL协议指定
+             *         - URL中协议为injvm 导出服务使用的实现是InjvmProtocol
+             */
             Exporter<?> exporter = protocol.export(
                     proxyFactory.getInvoker(ref, (Class) interfaceClass, local));
             exporters.add(exporter);
