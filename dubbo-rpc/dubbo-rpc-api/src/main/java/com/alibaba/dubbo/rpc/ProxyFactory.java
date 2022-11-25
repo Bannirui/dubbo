@@ -55,6 +55,10 @@ public interface ProxyFactory {
      * @param url
      * @return invoker
      */
+    /**
+     * 生产者调用这个方法生成Invoker对象
+     * 将来某个时机通过Invoker对象执行invoke(...)方法 使用到目标对象提供的方法
+     */
     @Adaptive({Constants.PROXY_KEY})
     <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) throws RpcException;
 
