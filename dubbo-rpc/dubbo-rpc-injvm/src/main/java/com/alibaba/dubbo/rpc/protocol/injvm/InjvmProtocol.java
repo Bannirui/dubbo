@@ -81,8 +81,20 @@ public class InjvmProtocol extends AbstractProtocol implements Protocol {
         return DEFAULT_PORT;
     }
 
+    /**
+     * 生产者将目标服务创建Invoker对象导出到本地
+     */
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+        /**
+         * invoker
+         *     - 要暴露的对象的代理
+         *         - javassist编码创建代理对象
+         *         - Java反射
+         * serviceKey
+         *     - invoker中注入了URL配置
+         *     - 目标服务的全限定名
+         */
         return new InjvmExporter<T>(invoker, invoker.getUrl().getServiceKey(), exporterMap);
     }
 

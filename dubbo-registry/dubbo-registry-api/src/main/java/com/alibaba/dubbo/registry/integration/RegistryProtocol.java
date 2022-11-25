@@ -129,6 +129,9 @@ public class RegistryProtocol implements Protocol {
         registry.register(registedProviderUrl);
     }
 
+    /**
+     * 生产者将目标服务创建Invoker对象导出到远程
+     */
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
         //export invoker
