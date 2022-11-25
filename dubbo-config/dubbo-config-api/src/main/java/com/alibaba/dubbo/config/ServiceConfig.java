@@ -464,6 +464,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
 
+        /**
+         * ConfiguratorFactory这个扩展接口只配置了2个实现
+         *     - AbsentConfiguratorFactory
+         *     - OverrideConfiguratorFactory
+         * 他们归属于第三优先级缓存 拿着dubbo这个名称查不到
+         * url.getProtocol()->dubbo
+         */
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
@@ -476,7 +483,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!Constants.SCOPE_REMOTE.toString().equalsIgnoreCase(scope)) {
-                exportLocal(url);
+                // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49771&qos.port=22222&side=provider&timestamp=1669285279449
+                this.exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
             if (!Constants.SCOPE_LOCAL.toString().equalsIgnoreCase(scope)) {
@@ -520,7 +528,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void exportLocal(URL url) {
-        if (!Constants.LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
+        if (!Constants.LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) { // dubbo
+            // injvm://127.0.0.1/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49970&qos.port=22222&side=provider&timestamp=1669285554307
             URL local = URL.valueOf(url.toFullString())
                     .setProtocol(Constants.LOCAL_PROTOCOL)
                     .setHost(LOCALHOST)
