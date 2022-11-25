@@ -226,9 +226,14 @@ public class DubboProtocol extends AbstractProtocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+        // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=94935&qos.port=22222&side=provider&timestamp=1669362564480
         URL url = invoker.getUrl();
 
         // export service.
+        /**
+         * key标识着服务的目标对象
+         * com.alibaba.dubbo.demo.DemoService:20880
+         */
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
@@ -248,20 +253,21 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
-        openServer(url);
+        // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=94935&qos.port=22222&side=provider&timestamp=1669362564480
+        this.openServer(url);
         optimizeSerialization(url);
         return exporter;
     }
 
     private void openServer(URL url) {
         // find server.
-        String key = url.getAddress();
+        String key = url.getAddress(); // 10.10.132.185:20880
         //client can export a service which's only for server to invoke
         boolean isServer = url.getParameter(Constants.IS_SERVER_KEY, true);
         if (isServer) {
             ExchangeServer server = serverMap.get(key);
             if (server == null) {
-                serverMap.put(key, createServer(url));
+                serverMap.put(key, this.createServer(url));
             } else {
                 // server supports reset, use together with override
                 server.reset(url);

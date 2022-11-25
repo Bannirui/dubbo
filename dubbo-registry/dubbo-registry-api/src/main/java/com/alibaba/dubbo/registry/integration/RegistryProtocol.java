@@ -125,18 +125,42 @@ public class RegistryProtocol implements Protocol {
     }
 
     public void register(URL registryUrl, URL registedProviderUrl) {
+        /**
+         * registryUrl
+         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95948%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669364071921&pid=95948&qos.port=22222&timestamp=1669364071907
+         * registedProviderUrl
+         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95948&side=provider&timestamp=1669364071921
+         *
+         * RegistryFactory实现扩展
+         *     - 默认dubbo
+         *     - URL协议指定
+         *         - 这个地方使用ZookeeperRegistryFactory实现
+         */
         Registry registry = registryFactory.getRegistry(registryUrl);
         registry.register(registedProviderUrl);
     }
 
     /**
      * 生产者将目标服务创建Invoker对象导出到远程
+     *     - 启动服务
+     *         - 通过Protocol的DubboProtocol实现
+     *     - 服务注册
+     *         - 通过RegistryFactory的ZookeeperRegistryFactory注册到远程注册中心
      */
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
         //export invoker
-        final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker);
+        /**
+         * 真正的导出服务
+         *     - 实现在DubboProtocol中
+         *     - 启动目标服务
+         */
+        final ExporterChangeableWrapper<T> exporter = this.doLocalExport(originInvoker);
 
+        /**
+         * 注册中心的地址
+         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95551%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669363479100&pid=95551&qos.port=22222&timestamp=1669363479082
+         */
         URL registryUrl = getRegistryUrl(originInvoker);
 
         //registry provider
@@ -149,7 +173,14 @@ public class RegistryProtocol implements Protocol {
         ProviderConsumerRegTable.registerProvider(originInvoker, registryUrl, registeredProviderUrl);
 
         if (register) {
-            register(registryUrl, registeredProviderUrl);
+            /**
+             * 注册到远程注册中心
+             *     - registryUrl
+             *         - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95899%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669364001492&pid=95899&qos.port=22222&timestamp=1669364001477
+             *     - registeredProviderUrl
+             *         - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95899&side=provider&timestamp=1669364001492
+             */
+            this.register(registryUrl, registeredProviderUrl);
             ProviderConsumerRegTable.getProviderWrapper(originInvoker).setReg(true);
         }
 
@@ -172,6 +203,14 @@ public class RegistryProtocol implements Protocol {
                 exporter = (ExporterChangeableWrapper<T>) bounds.get(key);
                 if (exporter == null) {
                     final Invoker<?> invokerDelegete = new InvokerDelegete<T>(originInvoker, getProviderUrl(originInvoker));
+                    /**
+                     * invokerDelegate是真正运行的目标对象的代理
+                     *     - invoker的协议已经被篡改了
+                     *         - 本地的话是InjvmProtocol 协议是injvm
+                     *         - 远程的话是RegistryProtocol 协议是registry
+                     *     - 因此现在要真正启动服务需要再用当时的运行协议
+                     *         - 这个地方是dubbo协议 使用的实现是DubboRegistry
+                     */
                     exporter = new ExporterChangeableWrapper<T>((Exporter<T>) protocol.export(invokerDelegete), originInvoker);
                     bounds.put(key, exporter);
                 }
