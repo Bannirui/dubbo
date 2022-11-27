@@ -66,10 +66,16 @@ public class Exchangers {
         if (handler == null) {
             throw new IllegalArgumentException("handler == null");
         }
+        /**
+         * codec
+         *     - dubbo
+         *     - exchange
+         */
         url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
         /**
          * url
          *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&channel.readonly.sent=true&codec=dubbo&dubbo=2.0.2&generic=false&heartbeat=60000&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95076&qos.port=22222&side=provider&timestamp=1669362762912
+         * HeaderExchanger
          */
         return getExchanger(url).bind(url, handler);
     }
@@ -110,6 +116,7 @@ public class Exchangers {
             throw new IllegalArgumentException("handler == null");
         }
         url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
+        // HeaderExchanger
         return getExchanger(url).connect(url, handler);
     }
 
