@@ -57,16 +57,25 @@ public class ZookeeperRegistry extends FailbackRegistry {
     private final ZookeeperClient zkClient;
 
     public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
+        // zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&interface=com.alibaba.dubbo.registry.RegistryService&pid=39657&qos.port=22222&timestamp=1669560173930
         super(url);
         if (url.isAnyHost()) {
             throw new IllegalStateException("registry address == null");
         }
-        String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);
+        String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT); // dubbo
         if (!group.startsWith(Constants.PATH_SEPARATOR)) {
             group = Constants.PATH_SEPARATOR + group;
         }
-        this.root = group;
+        this.root = group; // /dubbo
+        /**
+         * 创建zk的客户端 后续操作客户端对zk进行读写
+         * 实现有2个
+         *     - ZkclientZookeeperTransporter
+         *     - CuratorZookeeperTransporter
+         * 默认是CuratorZookeeperTransporter
+         */
         zkClient = zookeeperTransporter.connect(url);
+        // zk监听器
         zkClient.addStateListener(new StateListener() {
             @Override
             public void stateChanged(int state) {

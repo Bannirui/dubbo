@@ -135,6 +135,8 @@ public class RegistryProtocol implements Protocol {
          *     - 默认dubbo
          *     - URL协议指定
          *         - 这个地方使用ZookeeperRegistryFactory实现
+         *
+         * 拿到zkClient 准备进行读写
          */
         Registry registry = registryFactory.getRegistry(registryUrl);
         registry.register(registedProviderUrl);
