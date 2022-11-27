@@ -139,6 +139,10 @@ public class RegistryProtocol implements Protocol {
          * 拿到zkClient 准备进行读写
          */
         Registry registry = registryFactory.getRegistry(registryUrl);
+        /**
+         * 不同注册中心实现关注各自的读写
+         *     - ZookeeperRegistry负责zk的读写
+         */
         registry.register(registedProviderUrl);
     }
 

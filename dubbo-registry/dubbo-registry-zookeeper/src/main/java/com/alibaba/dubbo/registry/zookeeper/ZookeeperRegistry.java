@@ -120,7 +120,15 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     protected void doRegister(URL url) {
         try {
-            zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
+            /**
+             * zk读写操作
+             *     - 创建节点
+             *         - path
+             *             - /dubbo/com.alibaba.dubbo.demo.DemoService/providers/dubbo%3A%2F%2F192.168.0.11%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D41099%26side%3Dprovider%26timestamp%3D1669562090672
+             *         - 永久/临时
+             *             - 默认临时节点
+             */
+            this.zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
         }

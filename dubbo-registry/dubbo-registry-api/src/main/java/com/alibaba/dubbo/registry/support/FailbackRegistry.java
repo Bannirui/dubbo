@@ -134,7 +134,11 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         failedUnregistered.remove(url);
         try {
             // Sending a registration request to the server side
-            doRegister(url);
+            /**
+             * 远程注册中心由各自实现关注读写
+             *     - ZookeeperRegistry关注zk读写
+             */
+            this.doRegister(url);
         } catch (Exception e) {
             Throwable t = e;
 

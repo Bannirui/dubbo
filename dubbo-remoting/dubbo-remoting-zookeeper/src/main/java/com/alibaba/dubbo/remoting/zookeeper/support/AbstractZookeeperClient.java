@@ -75,12 +75,12 @@ public abstract class AbstractZookeeperClient<TargetChildListener> implements Zo
         }
         int i = path.lastIndexOf('/');
         if (i > 0) {
-            create(path.substring(0, i), false);
+            create(path.substring(0, i), false); // 递归创建上一级
         }
         if (ephemeral) {
-            createEphemeral(path);
+            createEphemeral(path); // 创建临时节点
         } else {
-            createPersistent(path);
+            createPersistent(path); // 创建永久节点
             persistentExistNodePath.add(path);
 
         }
