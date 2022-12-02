@@ -173,7 +173,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     public synchronized T get() {
         if (this.destroyed) throw new IllegalStateException("Already destroyed!");
         if (this.ref == null)
-            this.init(); // 远程服务的代理对象
+            this.init();
         return ref;
     }
 
@@ -195,21 +195,21 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
 
     private void init() {
-        if (initialized) return; // 判断是否已经完成远程服务的初始化
-        initialized = true; // 标识完成远程服务的初始化
-        if (interfaceName == null || interfaceName.length() == 0) // 大的原理肯定是基于接口进行反射代理 对必要参数进行校验
+        if (this.initialized) return; // 避免重复初始化
+        this.initialized = true;
+        if (interfaceName == null || interfaceName.length() == 0) // 目标服务接口合法性校验
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         // get consumer's global configuration
-        checkDefault(); // 尝试配置ConsumerConfig
-        appendProperties(this); // 尝试配置ReferenceConfig
+        this.checkDefault(); // 尝试在VM参数中加载ConsumerConfig配置项
+        appendProperties(this); // 尝试在VM参数中加载ReferenceConfig配置项
         if (super.getGeneric() == null && this.getConsumer() != null) {
             super.setGeneric(this.getConsumer().getGeneric());
         }
-        if (ProtocolUtils.isGeneric(super.getGeneric())) {
+        if (ProtocolUtils.isGeneric(super.getGeneric())) { // 泛化调用
             this.interfaceClass = GenericService.class;
         } else {
             try {
-                this.interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());
+                this.interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader()); // 目标服务接口类
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
@@ -287,7 +287,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         if (ConfigUtils.getPid() > 0) {
             map.put(Constants.PID_KEY, String.valueOf(ConfigUtils.getPid()));
         }
-        if (!super.isGeneric()) {
+        if (!super.isGeneric()) { // 非泛化服务
             String revision = Version.getVersion(interfaceClass, version);
             if (revision != null && revision.length() > 0) {
                 map.put("revision", revision);
@@ -322,7 +322,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
         }
 
-        String hostToRegistry = ConfigUtils.getSystemProperty(Constants.DUBBO_IP_TO_REGISTRY);
+        String hostToRegistry = ConfigUtils.getSystemProperty(Constants.DUBBO_IP_TO_REGISTRY); // 消费者ip
         if (hostToRegistry == null || hostToRegistry.length() == 0) {
             hostToRegistry = NetUtils.getLocalHost();
         } else if (isInvalidLocalHost(hostToRegistry)) {
@@ -333,31 +333,43 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         //attributes are stored by system context.
         StaticContext.getSystemContext().putAll(attributes);
         /**
-         * <p>map就是一个配置项 包含了远程服务的配置信息 根据配置信息构建远程服务的代理对象<ul>
-         *     <li>side -> consumer</li>
-         *     <li>application -> demo-service</li>
-         *     <li>register.ip -> 192.168.0.3</li>
-         *     <li>methods -> sayHello</li>
-         *     <li>qos.port -> 33333</li>
-         *     <li>dubbo -> 2.0.2</li>
-         *     <li>pid -> 37888</li>
-         *     <li>interface -> com.alibaba.dubbo.demo.DemoService</li>
-         *     <li>timestamp -> 1652886744792</li>
-         * </ul></p>
+         * map就是一个配置项 包含了远程服务的配置信息 根据配置信息构建远程服务的代理对象
+         *     - side -> consumer
+         *     - application -> demo-service
+         *     - register.ip -> 192.168.0.3
+         *     - methods -> sayHello
+         *     - qos.port -> 33333
+         *     - dubbo -> 2.0.2
+         *     - pid -> 37888
+         *     - interface -> com.alibaba.dubbo.demo.DemoService
+         *     - timestamp -> 1652886744792
          */
         this.ref = this.createProxy(map);
         ConsumerModel consumerModel = new ConsumerModel(getUniqueServiceName(), this, ref, interfaceClass.getMethods());
         ApplicationModel.initConsumerModel(getUniqueServiceName(), consumerModel);
     }
 
+    /**
+     * - 创建Invoker对象
+     *     - 远程方式
+     *         - 注册中心
+     *             - zk
+     *                 - RegistryProtocol持有ZookeeperRegistry监听指定路径
+     *                     - configurators
+     *                     - routers
+     *                     - providers
+     *                 - RegistryProtocol获取到providers的子路径构建URL
+     *                 - DubboProtocol构建Invoker对象
+     * - 根据Invoker创建目标服务的代理对象
+     */
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
         URL tmpUrl = new URL("temp", "localhost", 0, map);
         final boolean isJvmRefer; // false
         if (super.isInjvm() == null) {
-            if (this.url != null && this.url.length() > 0) { // if a url is specified, don't do local reference
+            if (this.url != null && this.url.length() > 0) { // if a url is specified, don't do local reference // 指定了url配置 不做本地引用
                 isJvmRefer = false;
-            } else if (InjvmProtocol.getInjvmProtocol().isInjvmRefer(tmpUrl)) {
+            } else if (InjvmProtocol.getInjvmProtocol().isInjvmRefer(tmpUrl)) { // 检测生产者自定义的配置是否需要本地引用
                 // by default, reference local service if there is
                 isJvmRefer = true;
             } else {
@@ -367,14 +379,14 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             isJvmRefer = isInjvm().booleanValue();
         }
 
-        if (isJvmRefer) {
+        if (isJvmRefer) { // 本地引用 生成本地引用URL 构建InjvmInvoker实例
             URL url = new URL(Constants.LOCAL_PROTOCOL, NetUtils.LOCALHOST, 0, interfaceClass.getName()).addParameters(map);
             invoker = refprotocol.refer(interfaceClass, url);
             if (logger.isInfoEnabled()) {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
-        } else {
-            if (this.url != null && this.url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
+        } else { // 远程引用
+            if (this.url != null && this.url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address. // 远程直连方式调用生产者服务
                 String[] us = Constants.SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
                     for (String u : us) {
@@ -389,14 +401,22 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                         }
                     }
                 }
-            } else { // assemble URL from register center's configuration
-                List<URL> us = super.loadRegistries(false);
+            } else { // assemble URL from register center's configuration // 远程调用 通过注册中心
+                /**
+                 * 加载注册中心的url
+                 * 启动消费者时指定的远程注册中心配置封装成URL
+                 * 可能存在多协议/多注册中心
+                 * url
+                 *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=82343&qos.port=33333&registry=zookeeper&timestamp=1669709199146
+                 */
+                List<URL> us = super.loadRegistries(false); //
                 if (us != null && !us.isEmpty()) {
                     for (URL u : us) {
-                        URL monitorUrl = loadMonitor(u);
+                        URL monitorUrl = super.loadMonitor(u);
                         if (monitorUrl != null) {
                             map.put(Constants.MONITOR_KEY, URL.encode(monitorUrl.toFullString()));
                         }
+                        // refer参数
                         this.urls.add(u.addParameterAndEncoded(Constants.REFER_KEY, StringUtils.toQueryString(map)));
                     }
                 }
@@ -405,15 +425,16 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             }
 
-            if (this.urls.size() == 1) {
+            if (this.urls.size() == 1) { // 服务直连或者配置了单个注册中心
                 /**
-                 * 生成code的方式反射出Protocol$Adaptive实例对象
-                 * {@link Protocol#refer}这个{@link com.alibaba.dubbo.common.extension.Adaptive}方法预留了扩展点
-                 * 扩展名就是{@link URL#getProtocol()} 如果URL中不存在配置就使用dubbo作为默认
-                 * 当前URL携带的配置是registry
-                 * 因此refprotocol指向的真是的实现是{@link com.alibaba.dubbo.registry.integration.RegistryProtocol}
+                 * Protocol自适应扩展
+                 *     - 默认实现dubbo
+                 *     - URL协议类型
+                 * 这里url
+                 *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=82516&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D82516%26qos.port%3D33333%26register.ip%3D198.18.0.1%26side%3Dconsumer%26timestamp%3D1669709307576&registry=zookeeper&timestamp=1669709314764
+                 * 因此实现是RegistryProtocol
                  */
-                this.invoker = refprotocol.refer(interfaceClass, this.urls.get(0)); // 配置被封装在了URL中
+                this.invoker = refprotocol.refer(interfaceClass, this.urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
@@ -440,7 +461,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         if (c == null) {
             c = true; // default true
         }
-        if (c && !invoker.isAvailable()) {
+        if (c && !invoker.isAvailable()) { // invoker可用性检测
             // make it possible for consumer to retry later if provider is temporarily unavailable
             initialized = false; // com.alibaba.dubbo.demo.DemoService
             final String serviceKey = (this.group == null ? "" : group + "/") + this.interfaceName + (this.version == null ? "" : ":" + this.version);
@@ -455,7 +476,17 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             logger.info("Refer dubbo service " + interfaceClass.getName() + " from url " + invoker.getUrl());
         }
         // create service proxy
-        return (T) proxyFactory.getProxy(this.invoker); // proxyFactory是该类的静态成员属性 典型的工厂模式
+        /**
+         * 根据invoker生成代理类
+         *
+         * ProxyFactory自适应扩展
+         *     - 默认实现javassist
+         *     - URL中配置项proxy
+         * invoker中的URL
+         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?anyhost=true&application=native-consumer&check=false&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=82897&qos.port=33333&register.ip=198.18.0.1&remote.timestamp=1669707577585&side=consumer&timestamp=1669709866593
+         * 实现是JavassistProxyFactory
+         */
+        return (T) proxyFactory.getProxy(this.invoker);
     }
 
     private void checkDefault() {

@@ -92,14 +92,17 @@ public abstract class AbstractConfig implements Serializable {
     /**
      * 为Config的field到VM参数中找是否配置过值写回到Config中
      *     - ProviderConfig->dubbo.provider.xxx
+     *     - ConsumerConfig->dubbo.consumer.xxx
+     *     - ReferenceConfig->dubbo.reference.xxx
      */
     protected static void appendProperties(AbstractConfig config) {
         if (config == null) return; // 要从配置类实例中获取对应的配置项
         /**
-         * 配置项名称
+         * 在VM参数中配置项名称前缀
          *     - dubbo.provider.
          *     - dubbo.application.
          *     - dubbo.consumer.
+         *     - dubbo.reference.
          */
         String prefix = "dubbo." + getTagName(config.getClass()) + ".";
         Method[] methods = config.getClass().getMethods();

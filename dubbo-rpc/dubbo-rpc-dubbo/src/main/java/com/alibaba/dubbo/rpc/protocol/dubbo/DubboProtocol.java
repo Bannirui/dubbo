@@ -344,14 +344,14 @@ public class DubboProtocol extends AbstractProtocol {
     public <T> Invoker<T> refer(Class<T> serviceType, URL url) throws RpcException {
         optimizeSerialization(url);
         // create rpc invoker.
-        DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
+        DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, this.getClients(url), invokers);
         invokers.add(invoker);
         return invoker;
     }
 
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
-        boolean service_share_connect = false;
+        boolean service_share_connect = false; // 标识 共享客户端
         int connections = url.getParameter(Constants.CONNECTIONS_KEY, 0);
         // if not configured, connection is shared, otherwise, one connection for one service
         if (connections == 0) {
@@ -362,9 +362,9 @@ public class DubboProtocol extends AbstractProtocol {
         ExchangeClient[] clients = new ExchangeClient[connections];
         for (int i = 0; i < clients.length; i++) {
             if (service_share_connect) {
-                clients[i] = getSharedClient(url);
+                clients[i] = this.getSharedClient(url);
             } else {
-                clients[i] = initClient(url);
+                clients[i] = this.initClient(url);
             }
         }
         return clients;
@@ -406,6 +406,10 @@ public class DubboProtocol extends AbstractProtocol {
     private ExchangeClient initClient(URL url) {
 
         // client type setting.
+        /**
+         * url
+         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-consumer&check=false&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=72549&qos.port=33333&register.ip=10.10.132.185&remote.timestamp=1669962678300&side=consumer&timestamp=1669963221353
+         */
         String str = url.getParameter(Constants.CLIENT_KEY, url.getParameter(Constants.SERVER_KEY, Constants.DEFAULT_REMOTING_CLIENT));
 
         url = url.addParameter(Constants.CODEC_KEY, DubboCodec.NAME);

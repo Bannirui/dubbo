@@ -406,11 +406,28 @@ public abstract class AbstractRegistry implements Registry {
             notified.putIfAbsent(url, new ConcurrentHashMap<String, List<URL>>());
             categoryNotified = notified.get(url);
         }
+        /**
+         * hash表
+         *     -
+         *         - configurators
+         *         - empty://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=configurators&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62889&qos.port=33333&side=consumer&timestamp=1669948138707
+         *     -
+         *         - routers
+         *         - empty://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62889&qos.port=33333&side=consumer&timestamp=1669948138707
+         *     -
+         *         - providers
+         *         - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60396&side=provider&timestamp=1669944550279
+         */
         for (Map.Entry<String, List<URL>> entry : result.entrySet()) {
             String category = entry.getKey();
             List<URL> categoryList = entry.getValue();
             categoryNotified.put(category, categoryList);
             saveProperties(url);
+            /**
+             * 此时已经持有了生产者写在注册中心中的信息
+             * providers侧的信息
+             * 再将执行权回到RegistryDirectory中 使用DubboProtocol创建Netty客户端
+             */
             listener.notify(categoryList);
         }
     }

@@ -145,6 +145,12 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
+        /**
+         * url
+         *     - consumer://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=providers,configurators,routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62162&qos.port=33333&side=consumer&timestamp=1669947064021
+         * listener
+         *     - RegistryDirectory
+         */
         try {
             if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
                 String root = toRootPath();
@@ -182,6 +188,14 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 }
             } else {
                 List<URL> urls = new ArrayList<URL>();
+                /**
+                 * url
+                 *     - consumer://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=providers,configurators,routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62443&qos.port=33333&side=consumer&timestamp=1669947468801
+                 * category
+                 *     - /dubbo/com.alibaba.dubbo.demo.DemoService/providers
+                 *     - /dubbp/com.alibaba.dubbo.demo.DemoService/configurators
+                 *     - /dubbo/com.alibaba.dubbo.demo.DemoService/routers
+                 */
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     if (listeners == null) {
@@ -198,13 +212,13 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         });
                         zkListener = listeners.get(listener);
                     }
-                    zkClient.create(path, false);
+                    zkClient.create(path, false); // zk写节点
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
-                notify(url, listener, urls);
+                super.notify(url, listener, urls);
             }
         } catch (Throwable e) {
             throw new RpcException("Failed to subscribe " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);

@@ -166,7 +166,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         if (this.registries == null || this.registries.isEmpty()) return registryList;
         for (RegistryConfig config : this.registries) {
             /**
-             * 启动提供者指定的注册中心地址
+             * 启动提供者/消费者指定的注册中心地址
              *     - zookeeper://localhost:2181
              *     - multicast://224.5.6.7:1234
              */

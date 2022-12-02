@@ -175,6 +175,14 @@ public abstract class Proxy {
                 pkg = PACKAGE_NAME;
 
             // create ProxyInstance class.
+            /**
+             * pkg
+             *     - com.alibaba.dubbo.common.bytecode
+             * id
+             *     - 0
+             * pcn
+             *     - com.alibaba.dubbo.common.bytecode.proxy0
+             */
             String pcn = pkg + ".proxy" + id; // 包名
             ccp.setClassName(pcn);
             ccp.addField("public static java.lang.reflect.Method[] methods;");
@@ -190,7 +198,12 @@ public abstract class Proxy {
             ccm.setClassName(fcn);
             ccm.addDefaultConstructor();
             ccm.setSuperClass(Proxy.class);
-            // 核心方法 对外界暴露了一个newInstance()方法 接受的入参类型是InvocationHandler
+            /**
+             * 核心方法
+             * public Object newInstance(java.lang.reflect.InvocationHandler h){
+             *     return new com.alibaba.dubbo.common.bytecode.Proxy0($1);
+             * }
+             */
             ccm.addMethod("public Object newInstance(" + InvocationHandler.class.getName() + " h){ return new " + pcn + "($1); }");
             Class<?> pc = ccm.toClass();
             proxy = (Proxy) pc.newInstance();

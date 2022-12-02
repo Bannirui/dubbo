@@ -117,6 +117,11 @@ public class Exchangers {
         }
         url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
         // HeaderExchanger
+        /**
+         * - 获取Exchanger对象
+         * - Exchanger实现
+         *     - netty
+         */
         return getExchanger(url).connect(url, handler);
     }
 

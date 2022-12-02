@@ -158,7 +158,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     public void subscribe(URL url) {
         setConsumerUrl(url);
-        registry.subscribe(url, this);
+        /**
+         * registry
+         *     - ZookeeperRegistry
+         * url
+         *     - consumer://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=providers,configurators,routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62081&qos.port=33333&side=consumer&timestamp=1669946946551
+         */
+        this.registry.subscribe(url, this);
     }
 
     @Override
@@ -192,12 +198,21 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         }
     }
 
+    /**
+     * urls
+     *     - configurators
+     *         - empty://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=configurators&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62889&qos.port=33333&side=consumer&timestamp=1669948138707
+     *     - routers
+     *         - empty://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62889&qos.port=33333&side=consumer&timestamp=1669948138707
+     *     - providers
+     *         - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60396&side=provider&timestamp=1669944550279
+     */
     @Override
     public synchronized void notify(List<URL> urls) {
-        List<URL> invokerUrls = new ArrayList<URL>();
-        List<URL> routerUrls = new ArrayList<URL>();
-        List<URL> configuratorUrls = new ArrayList<URL>();
-        for (URL url : urls) {
+        List<URL> invokerUrls = new ArrayList<URL>(); // 关注的是providers路径
+        List<URL> routerUrls = new ArrayList<URL>(); // 关注的是routers路径
+        List<URL> configuratorUrls = new ArrayList<URL>(); // 关注的是configurators路径
+        for (URL url : urls) { // 将urls分门别类到上面3个缓存中
             String protocol = url.getProtocol();
             String category = url.getParameter(Constants.CATEGORY_KEY, Constants.DEFAULT_CATEGORY);
             if (Constants.ROUTERS_CATEGORY.equals(category)
@@ -232,7 +247,12 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             }
         }
         // providers
-        refreshInvoker(invokerUrls);
+        /**
+         * 关注的是providers
+         * dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60396&side=provider&timestamp=1669944550279
+         * 从zk中providers节点下拿到了所有子节点 也就是生产者写在注册中心中的信息
+         */
+        this.refreshInvoker(invokerUrls);
     }
 
     /**
@@ -245,6 +265,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      */
     // TODO: 2017/8/31 FIXME The thread pool should be used to refresh the address, otherwise the task may be accumulated.
     private void refreshInvoker(List<URL> invokerUrls) {
+        // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60396&side=provider&timestamp=1669944550279
         if (invokerUrls != null && invokerUrls.size() == 1 && invokerUrls.get(0) != null
                 && Constants.EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
             this.forbidden = true; // Forbid to access
@@ -262,7 +283,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
-            Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
+            // 创建Invoker对象
+            Map<String, Invoker<T>> newUrlInvokerMap = this.toInvokers(invokerUrls);// Translate url list to Invoker map
             Map<String, List<Invoker<T>>> newMethodInvokerMap = toMethodInvokers(newUrlInvokerMap); // Change method name to map Invoker Map
             // state change
             // If the calculation is wrong, it is not processed.
@@ -396,6 +418,15 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                         enabled = url.getParameter(Constants.ENABLED_KEY, true);
                     }
                     if (enabled) {
+                        /**
+                         * url
+                         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-consumer&check=false&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=63208&qos.port=33333&register.ip=10.10.132.185&remote.timestamp=1669944550279&side=consumer&timestamp=1669948619250
+                         * providerUrl
+                         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60396&side=provider&timestamp=1669944550279
+                         *
+                         * 这个地方Protocol扩展接口会根据url中的协议dubbo确定实现为DubboProtocol
+                         * 在DubboProtocol中会涉及Netty客户端的建立
+                         */
                         invoker = new InvokerDelegate<T>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {
@@ -586,8 +617,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         if (forbidden) {
             // 1. No service provider 2. Service providers are disabled
             throw new RpcException(RpcException.FORBIDDEN_EXCEPTION,
-                "No provider available from registry " + getUrl().getAddress() + " for service " + getConsumerUrl().getServiceKey() + " on consumer " +  NetUtils.getLocalHost()
-                        + " use dubbo version " + Version.getVersion() + ", please check status of providers(disabled, not registered or in blacklist).");
+                    "No provider available from registry " + getUrl().getAddress() + " for service " + getConsumerUrl().getServiceKey() + " on consumer " + NetUtils.getLocalHost()
+                            + " use dubbo version " + Version.getVersion() + ", please check status of providers(disabled, not registered or in blacklist).");
         }
         List<Invoker<T>> invokers = null;
         Map<String, List<Invoker<T>>> localMethodInvokerMap = this.methodInvokerMap; // local reference

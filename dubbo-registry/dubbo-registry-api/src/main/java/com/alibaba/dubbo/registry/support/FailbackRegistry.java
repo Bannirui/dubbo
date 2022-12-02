@@ -197,7 +197,11 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         removeFailedSubscribed(url, listener);
         try {
             // Sending a subscription request to the server side
-            doSubscribe(url, listener);
+            /**
+             * 父类抽象方法 延迟到子类实现
+             *     - ZookeeperRegistry
+             */
+            this.doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
 
@@ -258,6 +262,16 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         }
     }
 
+    /**
+     * url
+     *     - consumer://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=providers,configurators,routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62655&qos.port=33333&side=consumer&timestamp=1669947773381
+     * listener
+     *     - RegistryDirectory
+     * urls
+     *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60396&side=provider&timestamp=1669944550279
+     *     - empty://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=configurators&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62655&qos.port=33333&side=consumer&timestamp=1669947773381
+     *     - empty://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=routers&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=62655&qos.port=33333&side=consumer&timestamp=1669947773381
+     */
     @Override
     protected void notify(URL url, NotifyListener listener, List<URL> urls) {
         if (url == null) {
@@ -267,7 +281,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             throw new IllegalArgumentException("notify listener == null");
         }
         try {
-            doNotify(url, listener, urls);
+            this.doNotify(url, listener, urls);
         } catch (Exception t) {
             // Record a failed registration request to a failed list, retry regularly
             Map<NotifyListener, List<URL>> listeners = failedNotified.get(url);

@@ -17,12 +17,14 @@
 package com.alibaba.dubbo.rpc.cluster.support;
 
 import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.Result;
 import com.alibaba.dubbo.rpc.RpcException;
 import com.alibaba.dubbo.rpc.RpcInvocation;
 import com.alibaba.dubbo.rpc.RpcResult;
+import com.alibaba.dubbo.rpc.cluster.Cluster;
 import com.alibaba.dubbo.rpc.cluster.Directory;
 import com.alibaba.dubbo.rpc.cluster.directory.StaticDirectory;
 import com.alibaba.dubbo.rpc.protocol.AbstractInvoker;
@@ -256,5 +258,11 @@ public class FailoverClusterInvokerTest {
         protected List<Invoker<T>> doList(Invocation invocation) throws RpcException {
             return new ArrayList<Invoker<T>>(super.doList(invocation));
         }
+    }
+
+    @Test
+    public void test00(){
+        Cluster ans = ExtensionLoader.getExtensionLoader(Cluster.class).getAdaptiveExtension();
+        System.out.println();
     }
 }

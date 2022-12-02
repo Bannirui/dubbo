@@ -80,7 +80,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         reconnect_warning_period = url.getParameter("reconnect.waring.period", 1800);
 
         try {
-            doOpen();
+            this.doOpen(); // 抽象 实现由子类关注
         } catch (Throwable t) {
             close();
             throw new RemotingException(url.toInetSocketAddress(), null,
@@ -89,7 +89,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         }
         try {
             // connect.
-            connect();
+            this.connect();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " " + NetUtils.getLocalAddress() + " connect to the server " + getRemoteAddress());
             }
@@ -279,7 +279,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                 return;
             }
             initConnectStatusCheckCommand();
-            doConnect();
+            this.doConnect(); // 抽象 实现由子类关注
             if (!isConnected()) {
                 throw new RemotingException(this, "Failed connect to server " + getRemoteAddress() + " from " + getClass().getSimpleName() + " "
                         + NetUtils.getLocalHost() + " using dubbo version " + Version.getVersion()

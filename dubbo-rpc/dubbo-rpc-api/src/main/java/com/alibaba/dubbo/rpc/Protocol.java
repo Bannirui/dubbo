@@ -22,6 +22,9 @@ import com.alibaba.dubbo.common.extension.SPI;
 
 /**
  * Protocol. (API/SPI, Singleton, ThreadSafe)
+ * 实现根据URL配置选择
+ *     - 默认dubbo
+ *     - URL中使用的协议protocol
  */
 @SPI("dubbo")
 public interface Protocol {
