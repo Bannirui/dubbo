@@ -68,6 +68,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     public FailbackRegistry(URL url) {
         super(url);
         this.retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
+        // 构造方法启动线程池启动定时任务去对失败的请求进行安全地补偿
         this.retryFuture = retryExecutor.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
@@ -328,6 +329,16 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     // Retry the failed actions
+    /**
+     * 定时任务执行重试任务进行容错机制的实现
+     * <ul>执行失败的请求都在缓存中
+     *   <li>{@link FailbackRegistry#failedRegistered}</li>
+     *   <li>{@link FailbackRegistry#failedUnregistered}</li>
+     *   <li>{@link FailbackRegistry#failedSubscribed}</li>
+     *   <li>{@link FailbackRegistry#failedUnsubscribed}</li>
+     * </ul>
+     * 定时任务执行的时候就扫描这此缓存 看看有没有要处理的失败请求
+     */
     protected void retry() {
         if (!failedRegistered.isEmpty()) {
             Set<URL> failed = new HashSet<URL>(failedRegistered);
@@ -339,6 +350,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                     for (URL url : failed) {
                         try {
                             doRegister(url);
+                            // 等注册成功了再从失败缓存中清除 如果还是处理失败了 这个请求还在失败缓存中 在下一轮的定时任务执行时机还会继续被处理
                             failedRegistered.remove(url);
                         } catch (Throwable t) { // Ignore all the exceptions and wait for the next retry
                             logger.warn("Failed to retry register " + failed + ", waiting for again, cause: " + t.getMessage(), t);
