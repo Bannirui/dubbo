@@ -68,8 +68,21 @@ public abstract class AbstractRegistry implements Registry {
     // Is it synchronized to save the file
     private final boolean syncSaveFile;
     private final AtomicLong lastCacheChanged = new AtomicLong();
+    // 注册成功的服务
     private final Set<URL> registered = new ConcurrentHashSet<URL>();
+    /**
+     * 订阅的服务
+     * <ul>
+     *     <li>订阅的服务 也就是感兴趣的是哪个服务</li>
+     *     <li>是谁在订阅 将来被订阅的服务发生了变更通知谁</li>
+     * </ul>
+     */
     private final ConcurrentMap<URL, Set<NotifyListener>> subscribed = new ConcurrentHashMap<URL, Set<NotifyListener>>();
+    /**
+     * 最近一次推送给消费者的服务信息
+     * 内层map的key是类别 providers routers configurators
+     * 相当于是在本地做了个服务列表缓存 远程注册中心不可用时也能正常工作
+     */
     private final ConcurrentMap<URL, Map<String, List<URL>>> notified = new ConcurrentHashMap<URL, Map<String, List<URL>>>();
     private URL registryUrl;
     // Local disk cache file
@@ -264,6 +277,9 @@ public abstract class AbstractRegistry implements Registry {
         return result;
     }
 
+    /**
+     * 写到缓存{@link AbstractRegistry#registered}
+     */
     @Override
     public void register(URL url) {
         if (url == null) {
@@ -272,9 +288,13 @@ public abstract class AbstractRegistry implements Registry {
         if (logger.isInfoEnabled()) {
             logger.info("Register: " + url);
         }
+        // 入缓存
         registered.add(url);
     }
 
+    /**
+     * 从缓存{@link AbstractRegistry#registered}中移除
+     */
     @Override
     public void unregister(URL url) {
         if (url == null) {
@@ -283,9 +303,13 @@ public abstract class AbstractRegistry implements Registry {
         if (logger.isInfoEnabled()) {
             logger.info("Unregister: " + url);
         }
+        // 移除缓存
         registered.remove(url);
     }
 
+    /**
+     * 写到缓存{@link AbstractRegistry#subscribed}
+     */
     @Override
     public void subscribe(URL url, NotifyListener listener) {
         if (url == null) {
@@ -299,12 +323,16 @@ public abstract class AbstractRegistry implements Registry {
         }
         Set<NotifyListener> listeners = subscribed.get(url);
         if (listeners == null) {
+            // 入缓存
             subscribed.putIfAbsent(url, new ConcurrentHashSet<NotifyListener>());
             listeners = subscribed.get(url);
         }
         listeners.add(listener);
     }
 
+    /**
+     * 从缓存{@link AbstractRegistry#subscribed}中移除
+     */
     @Override
     public void unsubscribe(URL url, NotifyListener listener) {
         if (url == null) {
@@ -318,6 +346,7 @@ public abstract class AbstractRegistry implements Registry {
         }
         Set<NotifyListener> listeners = subscribed.get(url);
         if (listeners != null) {
+            // 删除缓存
             listeners.remove(listener);
         }
     }
@@ -371,6 +400,12 @@ public abstract class AbstractRegistry implements Registry {
         }
     }
 
+    /**
+     * 注册中心负责对服务变更事件进行通知
+     * @param url 订阅者感兴趣的服务
+     * @param listener 回调 发现注册中心中有感兴趣的服务变更后进行通知
+     * @param urls 注册中心中发生变更的服务
+     */
     protected void notify(URL url, NotifyListener listener, List<URL> urls) {
         if (url == null) {
             throw new IllegalArgumentException("notify url == null");

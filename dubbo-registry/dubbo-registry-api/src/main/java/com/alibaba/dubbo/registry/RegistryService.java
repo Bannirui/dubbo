@@ -40,6 +40,9 @@ public interface RegistryService {
      *
      * @param url  Registration information , is not allowed to be empty, e.g: dubbo://10.20.153.10/com.alibaba.foo.BarService?version=1.0.0&application=kylin
      */
+    /**
+     * 向注册中心注册一个服务
+     */
     void register(URL url);
 
     /**
@@ -50,6 +53,9 @@ public interface RegistryService {
      * 2. Unregister according to the full url match.<br>
      *
      * @param url Registration information , is not allowed to be empty, e.g: dubbo://10.20.153.10/com.alibaba.foo.BarService?version=1.0.0&application=kylin
+     */
+    /**
+     * 从注册中心取消该服务的注册 告诉注册中心该服务不再可用 从注册中心的服务列表中移除
      */
     void unregister(URL url);
 
@@ -68,6 +74,9 @@ public interface RegistryService {
      * @param url      Subscription condition, not allowed to be empty, e.g. consumer://10.20.153.10/com.alibaba.foo.BarService?version=1.0.0&application=kylin
      * @param listener A listener of the change event, not allowed to be empty
      */
+    /**
+     * 服务订阅 接收服务变更通知
+     */
     void subscribe(URL url, NotifyListener listener);
 
     /**
@@ -80,6 +89,9 @@ public interface RegistryService {
      * @param url      Subscription condition, not allowed to be empty, e.g. consumer://10.20.153.10/com.alibaba.foo.BarService?version=1.0.0&application=kylin
      * @param listener A listener of the change event, not allowed to be empty
      */
+    /**
+     * 取消服务订阅
+     */
     void unsubscribe(URL url, NotifyListener listener);
 
     /**
@@ -88,6 +100,9 @@ public interface RegistryService {
      * @param url Query condition, is not allowed to be empty, e.g. consumer://10.20.153.10/com.alibaba.foo.BarService?version=1.0.0&application=kylin
      * @return The registered information list, which may be empty, the meaning is the same as the parameters of {@link com.alibaba.dubbo.registry.NotifyListener#notify(List<URL>)}.
      * @see com.alibaba.dubbo.registry.NotifyListener#notify(List)
+     */
+    /**
+     * 查询服务列表
      */
     List<URL> lookup(URL url);
 
