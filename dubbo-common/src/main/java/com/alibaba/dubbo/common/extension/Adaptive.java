@@ -29,6 +29,20 @@ import java.lang.annotation.Target;
  *
  * @see ExtensionLoader
  * @see URL
+ * 这个注解是搭配{@link SPI}使用的
+ * <ul>
+ *     <li>{@link SPI}注解的方法是用来指定一个默认的别名</li>
+ *     <li>{@link SPI}单独使用 没有搭配{@link Adaptive} 就用这个默认别名找实现</li>
+ *     <li>要是{@link SPI}和{@link Adaptive}搭配使用 就要看{@link Adaptive}是打在实现类上还是打在方法上<ul>
+ *         <li>打在方法上 就用{@link Adaptive}方法指定的值作为参数从{@link URL}中解析出实现别名</li>
+ *         <li>打在类上 这个类就是接口对应的实现 不用再找了</li>
+ *     </ul></li>
+ * </ul>
+ * 也就是说这个注解是给2个场景使用的
+ * <ul>
+ *     <li>1 给用户用的 打在用户自己编写的类上 这个类就是接口的动态实现方式</li>
+ *     <li>2 给dubbo用的 打在接口的方法声明上 dubbo根据{@link Adaptive}注解标识找到方法生成这个方法的实现</li>
+ * </ul>
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

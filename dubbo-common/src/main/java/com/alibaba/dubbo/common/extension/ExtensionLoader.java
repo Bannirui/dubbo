@@ -56,6 +56,13 @@ import java.util.regex.Pattern;
  * @see com.alibaba.dubbo.common.extension.Adaptive
  * @see com.alibaba.dubbo.common.extension.Activate
  */
+/**
+ * 接口上的{@link SPI}注解和{@link Adaptive}注解搭配使用
+ * <ul>
+ *     <li>同时使用两个注解 就优先根据{@link Adaptive}注解指定的参数去{@link URL}找对应的实现别名 要是没有这个别名对应的实现 就再用{@link SPI}指定的别名找实现</li>
+ *     <li>没有用{@link Adaptive}注解 只单独使用了{@link SPI}注解 就用{@link SPI}指定的别名找实现</li>
+ * </ul>
+ */
 public class ExtensionLoader<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(ExtensionLoader.class);
@@ -70,11 +77,26 @@ public class ExtensionLoader<T> {
 
     private static final ConcurrentMap<Class<?>, ExtensionLoader<?>> EXTENSION_LOADERS = new ConcurrentHashMap<Class<?>, ExtensionLoader<?>>(); // 缓存 扩展接口以及对应的扩展类加载器
 
+    /**
+     * 接口{@link ExtensionLoader#type}接口的实现
+     * <ul>
+     *     <li>要么是用户自定义的类打上了{@link Adaptive}注解</li>
+     *     <li>要么是dubbo编码生成的代理类</li>
+     * </ul>
+     * 缓存的维度是
+     * <ul>
+     *     <li>key 类</li>
+     *     <li>val 实例</li>
+     * </ul>
+     */
     private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<Class<?>, Object>(); // 接口type实现类对象跟实例之间的映射关系
 
     // ==============================
-
-    private final Class<?> type; // 扩展点(接口类型)
+    /**
+     * SPI就是面向接口+动态发现实现
+     * 这个type就是接口
+     */
+    private final Class<?> type;
 
     /**
      * 除了ExtensionFactory的ExtensionLoader这个属性为空 其他的扩展接口的扩展类加载器这个属性都是AdaptiveExtensionFactory的实例
@@ -88,35 +110,71 @@ public class ExtensionLoader<T> {
      */
     private final ExtensionFactory objectFactory;
 
+    /**
+     * 实现别名和实现的映射
+     * <ul>
+     *     <li>key=实现</li>
+     *     <li>val=实现的别名</li>
+     * </ul>
+     */
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<Class<?>, String>();
 
     /**
-     * 封装了classpath文件里面所有的扩展接口实现 key=名称 value=实现实例
+     * 3级缓存
+     * <ul>
+     *     <li>1级缓存 {@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>2级缓存 {@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>3级缓存 {@link ExtensionLoader#cachedClasses}</li>
+     * </ul>
+     * <ul>
+     *     <li>键 给实现实例起的名字 比如ZookeeperRegistryFactory的名字叫zookeeper</li>
+     *     <li>值 实现类的全限定路径名</li>
+     * </ul>
      */
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<Map<String, Class<?>>>();
 
     private final Map<String, Activate> cachedActivates = new ConcurrentHashMap<String, Activate>();
+    /**
+     * 缓存ExtensionLoader创建过的实现实例
+     * <ul>
+     *     <li>键 实例名 比如ZookeeperRegistryFactory的名称是zookeeper 就是在配置文件中的键</li>
+     *     <li>值 实现的实例对象</li>
+     * </ul>
+     */
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<String, Holder<Object>>();
     /**
      * 扩展点的适配类 封装在Holder中
      */
     private final Holder<Object> cachedAdaptiveInstance = new Holder<Object>();
     /**
-     * 在遍历SPI文件中扩展实现的第一优先级
-     *     - 扩展点的扩展实现中第一个标注Adaptive注解的类对象
+     * 1级缓存
+     * <ul>
+     *     <li>1级缓存 {@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>2级缓存 {@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>3级缓存 {@link ExtensionLoader#cachedClasses}</li>
+     * </ul>
+     * 找到的实现 这个实现的类上打了{@link Adaptive}注解 这种情况的语义就是让这个实现成为接口的默认实现 不需要再继续找动态实现了
+     * 因此先缓存在这 将来找实现的时候肯定也是优先看看这个缓存有没有
+     * 并且 不支持多个实现类都打了{@link Adaptive}注解
+     * 如果不是用户自己实现了类用{@link Adaptive}标识就由dubbo创建代理类放在1级缓存{@link ExtensionLoader#cachedAdaptiveClass}
      */
     private volatile Class<?> cachedAdaptiveClass = null;
     /**
-     * 接口type有多个实现
+     * 接口实现的默认别名
      * 通过在接口声明上打注解@SPI("xxx")的方式指定这个接口的多实现中xxx为默认的实现
-     * 外界getExtension(...)获取type接口实现时如果没指定就使用默认的
+     * 为什么需要指定默认实现 比如@Adaptive({"protocol"})是从URL中获取protocol对应的配置值作为要找的实现名
+     * 所以没找到期望的实现就用默认的
      */
     private String cachedDefaultName;
     private volatile Throwable createAdaptiveInstanceError; // 标识扩展实现实例创建出现异常
 
     /**
-     * 在遍历SPI文件中扩展实现的第二优先级
-     *     - 扩展点的扩展实现是包装类型
+     * 2级缓存
+     * <ul>
+     *     <li>1级缓存 {@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>2级缓存 {@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>3级缓存 {@link ExtensionLoader#cachedClasses}</li>
+     * </ul>
      */
     private Set<Class<?>> cachedWrapperClasses;
 
@@ -131,9 +189,6 @@ public class ExtensionLoader<T> {
         return type.isAnnotationPresent(SPI.class);
     }
 
-    /**
-     * 给定接口type的扩展类加载器ExtensionLoader
-     */
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         // 必要的参数校验
@@ -315,17 +370,18 @@ public class ExtensionLoader<T> {
      * will be thrown.
      */
     /**
-     * 接口type的实现类缓存优先级
-     *     - 实现类上第一个打上@Adaptive注解的缓存在cachedAdaptiveClass
-     *     - 实现类是包装类的缓存在cachedWrapperClasses
-     *     - 其他实现类缓存在hash表中
-     *         - getExtension(...)就是从这份缓存中找指定名称的实现类
-     *         - getDefaultExtension(...)是根据接口上@SPI的名称作为依据在这个缓存中找的实现类
+     * 根据别名找实现的实例对象
+     * @param name 要找的实现名
+     *             比如zk实现的注册中心registry是ZookeeperRegistry 它的创建由ZookeeperRegistryFactory负责
+     *             RegistryFactory接口全限定名作文件名
+     *             键=zookeeper
+     *             值=ZookeeperRegistryFactory类全限定路径名
      */
     @SuppressWarnings("unchecked")
     public T getExtension(String name) {
         if (name == null || name.length() == 0) throw new IllegalArgumentException("Extension name == null");
         if ("true".equals(name)) return this.getDefaultExtension(); // type接口注解@SPI标识的名称 对应的实现作为接口默认实现
+        // 先看看有没有现成的缓存
         Holder<Object> holder = this.cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
@@ -334,9 +390,9 @@ public class ExtensionLoader<T> {
         Object instance = holder.get();
         if (instance == null) {
             synchronized (holder) {
-                instance = holder.get(); // 接口type扩展的实现
+                instance = holder.get();
                 if (instance == null) {
-                    instance = this.createExtension(name); // 缓存里面没有就去扫描里面找
+                    instance = this.createExtension(name);
                     holder.set(instance);
                 }
             }
@@ -530,33 +586,31 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * 指定路径
-     *     - META-INF/dubbo/internal/
-     *     - META-INF/dubbo/
-     *     - META-INF/services/
-     * 对上面3个路径进行扫描 找到需要扩展的接口的配置文件
-     * 轮询配置文件里面的所有键值对(key=名称 value=扩展点的扩展实现)
-     * 解析过程中
-     *     - 优先级1 扩展实现上首个注有Adaptive注解 缓存在cachedAdaptiveClass
-     *         - 这个实现类就是type这个扩展点的自适应扩展实现适配类 getAdaptiveExtension()方法用到
-     *     - 优先级2 扩展实现是包装类 全部缓存到cachedWrapperClasses
-     *     - 优先级3 其他扩展实现都缓存到ExtensionLoader的cachedClasses
-     *         - getDefaultExtension()用到
-     *         - getExtension(...)用到
-     *
-     * 到优先级3的cachedClasses找指定名字的实现类
+     * 在扫描到的实现中找到别名对应的实现 用反射创建实例
+     * @param name 在配置中给实现配置的别名 比如ZookeeperRegistryFactory的别名是zookeeper
+     * @return 别名对应的实现实例
      */
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
-        Class<?> clazz = this.getExtensionClasses().get(name); // 扫描实现类对象
+        /**
+         * 拿到实现类
+         * <ul>
+         *     <li>可能是用户自定义的类打上了{@link Adaptive}注解</li>
+         *     <li>可能是dubbo编码生成的代理类</li>
+         * </ul>
+         */
+        Class<?> clazz = this.getExtensionClasses().get(name);
         if (clazz == null) throw findException(name);
         try {
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
-                EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance()); // 反射创建实现类的实例
+                // 反射创建实现的实例对象
+                EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
-            this.injectExtension(instance); // 通过AdaptiveExtensionFactory检查实现的实例有没有setter注入扩展的场景
+            // 解决set循环注入场景
+            this.injectExtension(instance);
+            // 2级缓存
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
                 for (Class<?> wrapperClass : wrapperClasses)
@@ -569,9 +623,13 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * instance是type接口众多实现中最终选取的唯一作为Dubbo中的实现
-     * 解决扩展实现的循环依赖场景问题
-     *     - 某个扩展点的扩展实现已经获取 其中存在一个setter方法 设置的属性本身又是一个扩展实现
+     *
+     * 实现已经获取 其中存在一个setter方法 设置的属性本身又是自己接口的子类
+     * @param instance <ul>
+     *                   <li>要么是用户自己定义的类打上了{@link Adaptive}注解</li>
+     *                   <li>要么是dubbo用编码技术生成了代理类</li>
+     *                 </ul>
+     * @return
      */
     private T injectExtension(T instance) {
         try {
@@ -629,19 +687,18 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * 指定路径
-     *     - META-INF/dubbo/internal/
-     *     - META-INF/dubbo/
-     *     - META-INF/services/
-     * 对上面3个路径进行扫描 找到需要扩展的接口的配置文件
-     * 轮询配置文件里面的所有键值对(key=名称 value=扩展点的扩展实现)
-     * 解析过程中
-     *     - 如果扩展实现上注有Adaptive注解 就把这个实现缓存在cachedAdaptiveClass
-     *         - 这个实现就是type这个扩展点的自适应扩展实现适配类 getAdaptiveExtension()方法用到
-     *     - 扩展实现是包装类 全部缓存到cachedWrapperClasses
-     *     - 其他扩展实现都缓存到ExtensionLoader的cachedClasses
-     *         - getDefaultExtension()用到
-     *         - getExtension(...)用到
+     * <ul>
+     *     <li>classpath:META-INF/dubbo/internal/</li>
+     *     <li>classpath:META-INF/dubbo/</li>
+     *     <li>classpath:META-INF/services/</li>
+     * </ul>
+     * 在配置目录下根据{@link ExtensionLoader#type}接口的全限定路径名找到具体的配置文件
+     * 在配置文件中找到配置的实现缓存到合适的位置
+     * <ul>
+     *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>除此之外的缓存在{@link ExtensionLoader#cachedClasses}</li>
+     * </ul>
      */
     private Map<String, Class<?>> getExtensionClasses() {
         Map<String, Class<?>> classes = cachedClasses.get();
@@ -659,63 +716,82 @@ public class ExtensionLoader<T> {
 
     // synchronized in getExtensionClasses
     /**
-     * 3个classpath上为type接口加载具体实现
-     *     - 内置路径+接口全限定名
-     *         - META-INF/dubbo/internal/xxx
-     *         - META-INF/dubbo/xxx
-     *         - META-INF/services/xxx
-     *     - 文件内容格式是
-     *         - 实现1名称=实现1全限定名
-     *         - 实现2名称=实现2全限定名
-     * 扫描接口type的注解SPI
-     *     - 指定了name缓存起来作为默认实现名称
-     *         - getDefaultExtension()使用
-     * 扫描到接口type的所有指定实现 按照不同场景缓存起来
-     *     - 第一个@Adaptive注解标识的实现类缓存到cachedAdaptiveClass
-     *         - 给getAdaptiveExtension()创建自适应扩展适配用
-     *     - 实现类是包装类的缓存到cachedWrapperClasses
-     *     - 其余实现类缓存到hash表中
-     *         - getDefaultExtension()使用
-     *         - getExtension(...)根据名称查找实现类
-     *
+     * <ul>
+     *     <li>classpath:META-INF/dubbo/internal/</li>
+     *     <li>classpath:META-INF/dubbo/</li>
+     *     <li>classpath:META-INF/services/</li>
+     * </ul>
+     * 在配置目录下根据{@link ExtensionLoader#type}接口的全限定路径名找到具体的配置文件
+     * 在配置文件中找到配置的实现缓存到合适的位置
+     * <ul>
+     *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>除此之外的缓存在extensionClasses这个hash表</li>
+     * </ul>
+     * @return 配置文件中配置的常规的实现
+     *         <ul>
+     *             <li>key 实现的别名</li>
+     *             <li>val 实现的实例</li>
+     *         </ul>
      */
     private Map<String, Class<?>> loadExtensionClasses() {
         /**
-         * 接口type存在多实现 每个实现通过名字作区别
-         * 将来外界通过getExtension(...)来获取type接口的实现
-         *     - 在多实现中缓存中找需要的名称
-         *     - 使用指派的默认实现
+         * 接口上打的{@link SPI}注解 用为作为实现别名的默认别名
+         * 要是没用{@link Adaptive}指定从{@link URL}中解析参数作为别名 就用默认的别名找实现
          */
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {
-            String value = defaultAnnotation.value(); // 指派为type接口默认实现的名称
+            String value = defaultAnnotation.value();
             if ((value = value.trim()).length() > 0) {
                 String[] names = NAME_SEPARATOR.split(value);
                 if (names.length > 1)
                     throw new IllegalStateException("more than 1 default extension name on extension " + type.getName() + ": " + Arrays.toString(names));
-                if (names.length == 1) this.cachedDefaultName = names[0]; // type接口默认实现的名称
+                if (names.length == 1) this.cachedDefaultName = names[0];
             }
         }
 
-        // 缓存着type接口的多实现(第三优先级的实现类)
+        /**
+         * 缓存着接口的所有实现
+         * <ul>
+         *     <li>key=实现的别名</li>
+         *     <li>val=实现的实例</li>
+         * </ul>
+         */
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
         /**
-         * 3个classpath上为type接口加载具体实现
-         *     - 内置路径+接口全限定名
-         *         - META-INF/dubbo/internal/xxx
-         *         - META-INF/dubbo/xxx
-         *         - META-INF/services/xxx
-         *     - 文件内容格式是
-         *         - 实现1名称=实现1全限定名
-         *         - 实现2名称=实现2全限定名
+         * 3个目录
+         * <ul>
+         *     <li>classpath:META-INF/dubbo/internal/</li>
+         *     <li>classpath:META-INF/dubbo/</li>
+         *     <li>classpath:META-INF/services/</li>
+         * </ul>
+         * 在配置目录下根据{@link ExtensionLoader#type}接口的全限定路径名找到具体的配置文件
+         * 在配置文件中找到配置的实现缓存到合适的位置
+         * <ul>
+         *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+         *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+         *     <li>除此之外的缓存在extensionClasses这个hash表</li>
+         * </ul>
          */
-        this.loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY); // META-INF/dubbo/internal/
-        this.loadDirectory(extensionClasses, DUBBO_DIRECTORY); // META-INF/dubbo/
-        this.loadDirectory(extensionClasses, SERVICES_DIRECTORY); // META-INF/services/
+        this.loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY);
+        this.loadDirectory(extensionClasses, DUBBO_DIRECTORY);
+        this.loadDirectory(extensionClasses, SERVICES_DIRECTORY);
         return extensionClasses;
     }
 
-    private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir) { // 扫描结果缓存到map中
+    /**
+     * 找到配置文件中配置的实现类 分门别类缓存到合适的地方
+     * <ul>
+     *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>除此之外的缓存在extensionClasses这个hash表</li>
+     * </ul>
+     * @param extensionClasses 用来缓存找到的实现
+     * @param dir 要找的资源路径 在配置文件中定义了实现及实现的别名
+     *            比如zookeeper=com.alibaba.dubbo.registry.zookeeper.ZookeeperRegistryFactory
+     */
+    private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir) {
+        // 找到配置文件 接口的全限定路径名
         String fileName = dir + type.getName();
         try {
             Enumeration<java.net.URL> urls;
@@ -727,7 +803,7 @@ public class ExtensionLoader<T> {
             if (urls != null) {
                 while (urls.hasMoreElements()) {
                     java.net.URL resourceURL = urls.nextElement();
-                    this.loadResource(extensionClasses, classLoader, resourceURL); // extensionClasses用于缓存第三优先级的实现类对象
+                    this.loadResource(extensionClasses, classLoader, resourceURL);
                 }
             }
         } catch (Throwable t) {
@@ -735,6 +811,16 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 配置文件中的实现类分门别类缓存到合适的地方
+     * <ul>
+     *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>除此之外的缓存在extensionClasses这个hash表</li>
+     * </ul>
+     * @param extensionClasses 用来缓存{@link ExtensionLoader#type}这个接口配置的实现及实现对应的别名
+     * @param resourceURL 配置文件路径
+     */
     private void loadResource(Map<String, Class<?>> extensionClasses, ClassLoader classLoader, java.net.URL resourceURL) {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), "utf-8"));
@@ -744,14 +830,28 @@ public class ExtensionLoader<T> {
                     final int ci = line.indexOf('#');
                     if (ci >= 0) line = line.substring(0, ci);
                     line = line.trim();
+                    /**
+                     * 在配置文件中的配置格式是
+                     * 实现的别名=实现的全限定路径
+                     * 比如 zookeeper=com.alibaba.dubbo.registry.zookeeper.ZookeeperRegistryFactory
+                     * 把每个实现类都缓存到合适的地方
+                     * <ul>
+                     *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+                     *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+                     *     <li>除此之外的缓存在extensionClasses这个hash表</li>
+                     * </ul>
+                     */
                     if (line.length() > 0) {
                         try {
                             String name = null;
                             int i = line.indexOf('=');
                             if (i > 0) {
-                                name = line.substring(0, i).trim(); // 给扩展实现起的名字
-                                line = line.substring(i + 1).trim(); // 扩展实现的类路径
+                                // 实现的别名
+                                name = line.substring(0, i).trim();
+                                // 实现的全限定路径
+                                line = line.substring(i + 1).trim();
                             }
+                            // 找到的实现类缓存起来
                             if (line.length() > 0)
                                 this.loadClass(extensionClasses, resourceURL, Class.forName(line, true, classLoader), name);
                         } catch (Throwable t) {
@@ -769,27 +869,36 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * 轮询SPI文件 遍历到的所有扩展实现中 按照3个优先级缓存
-     *     - 优先级1 第一个标注@Adaptive注解的实现类缓存到cachedAdaptiveClass
-     *     - 优先级2 包装类型缓存到cachedWrapperClasses
-     *     - 其余放到hash表中
+     * 找到了一个实现 要把这个实现缓存起来
+     * 对找到的实现类型 有3个不同的缓存地方
+     * <ul>
+     *     <li>实现类上打了{@link Adaptive}注解的缓存在{@link ExtensionLoader#cachedAdaptiveClass}</li>
+     *     <li>实现类有构造方法 参数类型是{@link ExtensionLoader#type} 这种实现类缓存在{@link ExtensionLoader#cachedWrapperClasses}</li>
+     *     <li>除此之外的缓存在extensionClasses这个hash表</li>
+     * </ul>
+     * @param extensionClasses 用来缓存找到的{@link ExtensionLoader#type}的一个实现类
+     *                         key=实现的别名
+     *                         val=实现的实例
+     * @param clazz 在配置文件中给{@link ExtensionLoader#type}这个接口配置的一个实现 类的全限定路径
+     * @param name 在配置文件中给实现起的别名
      */
     private void loadClass(Map<String, Class<?>> extensionClasses, java.net.URL resourceURL, Class<?> clazz, String name) throws NoSuchMethodException {
         if (!type.isAssignableFrom(clazz))
             throw new IllegalStateException("Error when load extension class(interface: " + type + ", class line: " + clazz.getName() + "), class " + clazz.getName() + "is not subtype of interface.");
-        if (clazz.isAnnotationPresent(Adaptive.class)) { // 扩展实现上注有@Adaptive注解
-            if (this.cachedAdaptiveClass == null) // 将标注了@Adaptive注解的实现缓存起来 作为第一优先级
+        // 实现类上打了Adaptive注解 这就说明这个类被指定成了接口的实现 不需要再动态找实现了
+        if (clazz.isAnnotationPresent(Adaptive.class)) {
+            if (this.cachedAdaptiveClass == null)
                 this.cachedAdaptiveClass = clazz;
             else if (!cachedAdaptiveClass.equals(clazz)) // 扩展实现中只能存在一个标注了@Adaptive注解的实现
                 throw new IllegalStateException("More than 1 adaptive class found: " + cachedAdaptiveClass.getClass().getName() + ", " + clazz.getClass().getName());
-        } else if (this.isWrapperClass(clazz)) { // 扩展实现是包装类
+        } else if (this.isWrapperClass(clazz)) {
             Set<Class<?>> wrappers = this.cachedWrapperClasses;
             if (wrappers == null) {
                 this.cachedWrapperClasses = new ConcurrentHashSet<Class<?>>();
                 wrappers = this.cachedWrapperClasses;
             }
             wrappers.add(clazz);
-        } else { // 其他的扩展实现
+        } else {
             clazz.getConstructor();
             if (name == null || name.length() == 0) {
                 name = findAnnotationName(clazz);
@@ -815,6 +924,10 @@ public class ExtensionLoader<T> {
 
     private boolean isWrapperClass(Class<?> clazz) {
         try {
+            /**
+             * 这种类被成为Wrapper
+             * 实现有构造方法 并且这个构造方法只有一个参数 参数类型就是这个实现的接口类型
+             */
             clazz.getConstructor(type);
             return true;
         } catch (NoSuchMethodException e) {
@@ -861,43 +974,63 @@ public class ExtensionLoader<T> {
     }
 
     /**
-     * 自适应扩展实现类的优先级
-     *     - 缓存着的cachedAdaptiveClass 也就是扫描Dubbo SPI路径上实现类第一个@Adaptive注解标识的类对象
-     *     - 编码技术实现
+     * <ul>
+     *     <li>要么是用户定义的类打上了{@link Adaptive}</li>
+     *     <li>要么是dubbo用编码技术给接口创建了代理方法</li>
+     * </ul>
      */
     private Class<?> getAdaptiveExtensionClass() {
-        this.getExtensionClasses(); // 加载所有扩展接口指定的实现方式
-        if (this.cachedAdaptiveClass != null) // 扫描加载落站实现的时候会将@Adaptive注解标识的实现缓存起来作为扩展适配的第一优先级
+        /**
+         * 尝试扫描配置文件 把实现缓存起来
+         */
+        this.getExtensionClasses();
+        /**
+         * 在{@link ExtensionLoader#cachedAdaptiveClass}缓存着接口{@link ExtensionLoader#type}的用户侧通过在实现类上打{@link Adaptive}注解标识的实现
+         */
+        if (this.cachedAdaptiveClass != null)
             return this.cachedAdaptiveClass;
-        return this.cachedAdaptiveClass = this.createAdaptiveExtensionClass(); // 没有@Adaptive注解指定默认的扩展实现 使用编码技术生成
+        /**
+         * 用户没有指定实现方式 dubbo就要生成实现方式了
+         */
+        return this.cachedAdaptiveClass = this.createAdaptiveExtensionClass();
     }
 
     /**
-     * 创建扩展接口type的自适应扩展实现类对象
-     *     - 代码执行到这说明前置找标识@Adaptive注解的实现类没找到
-     *     - 尝试用人工生成编码方式创建类对象 对扩展接口中@Adaptive标识的方法进行定义
+     * 编码技术创建接口的代理类
+     * @return 为接口{@link ExtensionLoader#type}创建的代理类
      */
     private Class<?> createAdaptiveExtensionClass() {
         /**
-         * 扫描type扩展接口
-         *     - 对其中声明@Adaptive的方法进行定义实现
+         * 给接口{@link ExtensionLoader#type}这个接口的方法编码实现代理方法
          */
         String code = this.createAdaptiveExtensionClassCode();
         ClassLoader classLoader = findClassLoader(); // 当前类加载器
         com.alibaba.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
+        // 根据源码生成类
         return compiler.compile(code, classLoader);
     }
 
     /**
-     * 创建扩展接口type的自适应扩展实现类
-     *     - 代码执行到这说明前置找标识@Adaptive注解的实现类没找到
-     *     - 尝试用人工生成编码方式创建类对象 对扩展接口中@Adaptive标识的方法进行定义
+     * 没有在接口{@link ExtensionLoader#type}的实现类上打{@link Adaptive}注解作为指定实现
+     * 要通过编码方式生成实现 就是调用{@link ExtensionLoader#getExtension(String)}拿到对应接口的实现
+     * 而实现的别名就是根据接口的注解拿
+     * <ul>
+     *     <li>接口只用了{@link SPI} 实现别名就是这个注解的方法指定的</li>
+     *     <li>接口除了用{@link SPI}外 还用了{@link Adaptive}<ul>
+     *         <li>{@link Adaptive}注解方法没有指定 就用{@link SPI}指定的值作key从{@link URL#getParameter(String)}拿到别名</li>
+     *         <li>{@link Adaptive}注解方法指定了值就用指定的值作key从{}</li>
+     *     </ul></li>
+     * </ul>
+     * @return dubbo生成的java源码 实现的接口中方法的代理
      */
     private String createAdaptiveExtensionClassCode() {
         StringBuilder codeBuilder = new StringBuilder();
-        Method[] methods = type.getMethods(); // 要人工定义实现的扩展接口对象type中声明的所有方法
+        // 接口中声明的方法
+        Method[] methods = type.getMethods();
         boolean hasAdaptiveAnnotation = false;
-        // type扩展接口中方法要求至少有一个是要人工实现的
+        /**
+         * 找到{@link ExtensionLoader#type}接口中第一个被{@link Adaptive}修饰的要从{@link URL}中查询配置参数找真正实现方式
+         */
         for (Method m : methods) {
             if (m.isAnnotationPresent(Adaptive.class)) { // 检测接口中方法是否有@Adaptive注解标识
                 hasAdaptiveAnnotation = true;
@@ -921,22 +1054,40 @@ public class ExtensionLoader<T> {
          *         - 方法内部逻辑就是抛个异常表明不支持该方法
          *     - 有@Adaptive标识
          */
-        for (Method method : methods) { // 轮询扩展点里面所有的方法
-            Class<?> rt = method.getReturnType(); // 方法的返回值类型
-            Class<?>[] pts = method.getParameterTypes(); // 方法的入参类型
-            Class<?>[] ets = method.getExceptionTypes(); // 方法的异常类型
-
-            Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class); // 轮询到的方法要不要定义扩展实现
+        /**
+         * 现在执行到这的场景是没有手动实现类标注{@link Adaptive} 也就是没有手动实现接口
+         * 所以需要依赖dubbo去实现接口 那么也就意味着接口{@link ExtensionLoader#type}中方法一定是被{@link Adaptive}注解的 不然dubbo不知道要实现什么方法
+         * 所以开始轮询接口的方法根据{@link Adaptive}标识找方法 为方法生成实现代码
+         */
+        for (Method method : methods) {
+            /**
+             * 方法签名必要的信息
+             * <ul>
+             *     <li>返回值</li>
+             *     <li>形参</li>
+             *     <li>上抛异常</li>
+             * </ul>
+             */
+            Class<?> rt = method.getReturnType();
+            Class<?>[] pts = method.getParameterTypes();
+            Class<?>[] ets = method.getExceptionTypes();
+            // 看看接口方法上有没有Adaptive注解
+            Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
+            // 要实现的接口方法的代码块逻辑 最后在这个代码上套上方法签名就是完整的方法实现
             StringBuilder code = new StringBuilder(512);
             if (adaptiveAnnotation == null) {
                 /**
-                 * 方法没有被@Adaptive标识
+                 * 方法没有被{@link Adaptive}标识
                  * throw new UnsupportedOperation(...);
                  */
                 code.append("throw new UnsupportedOperationException(\"method ").append(method.toString()).append(" of interface ").append(type.getName()).append(" is not adaptive method!\");");
             } else {
-                int urlTypeIndex = -1; // 标识方法参数列表中是否有URL类型的行参 或者虽然行参不是直接URL类型但是这个类型有getxxx的方法可以返回URL -1表示不存在
-                // 轮询方法形参列表 找到URL类型的入参
+                /**
+                 * dubbo的SPI机制依赖{@link URL} 运行时从{@link URL}中找key对应的val作为实现别名
+                 * 所以方法签名中必须依赖{@link URL}参数 没有这个参数就抛异常
+                 * 参数列表中找{@link URL}类型 记录在参数列表中的脚标 找不到就-1标识
+                 */
+                int urlTypeIndex = -1;
                 for (int i = 0; i < pts.length; ++i) {
                     if (pts[i].equals(URL.class)) {
                         urlTypeIndex = i;
@@ -944,30 +1095,34 @@ public class ExtensionLoader<T> {
                     }
                 }
                 // found parameter in URL type
-                if (urlTypeIndex != -1) { // 方法形参中有URL类型的入参
-                    // 假使方法形参列表第一个参数就是URL类型的 urlTypeIndex就是0
-                    /**
-                     * if (arg0==null)
-                     *     throw new IllegalArgumentException("url==null");
-                     */
+                if (urlTypeIndex != -1) {
                     // Null Point check
                     String s = String.format("\nif (arg%d == null) throw new IllegalArgumentException(\"url == null\");", urlTypeIndex);
                     code.append(s);
-
-                    /**
-                     * URL url = arg0
-                     */
                     s = String.format("\n%s url = arg%d;", URL.class.getName(), urlTypeIndex);
                     code.append(s);
                 }
                 // did not find parameter in URL type
-                else { // 方法形参列表中没有URL类型入参
+                else {
+                    // 接口方法中没有直接URL的形参 但是能找到某个形参类有get方法可以间接拿到URL 缓存get方法
                     String attribMethod = null;
 
-                    // find URL getter method // 轮询所有的参数类型 但凡找到一个getter方法的返回值是URL类型就标识出来 如果压根不存在这样的一个获取URL的getter方法 那就无法创建自适应扩展实现的编码 因为所有的配置信息都封装在URL中 没有URL就无法在运行时进行自适应扩展
+                    // find URL getter method
+                    /**
+                     * 没有直接的{@link URL}类型的形参 但是可能其他的参数可以通过get方法提供{@link URL}
+                     * 如果啥都没有
+                     * <ul>
+                     *     <li>既没有直接提供{@link URL}类型参数</li>
+                     *     <li>又没有间接提供{@link URL}类型参数</li>
+                     * </ul>
+                     * 就没有办法生成实现代码 上抛异常
+                     * 轮询所有的参数类型 但凡找到一个getter方法的返回值是URL类型就标识出来
+                     * 如果压根不存在这样的一个获取URL的getter方法 那就无法创建实现
+                     */
                     LBL_PTS:
                     for (int i = 0; i < pts.length; ++i) {
-                        Method[] ms = pts[i].getMethods(); // 行参也是个类型 这个类型的方法列表
+                        // 能找到接口方法中某个形参的类里面有get方法可以拿到URL
+                        Method[] ms = pts[i].getMethods();
                         for (Method m : ms) {
                             String name = m.getName();
                             if ((name.startsWith("get") || name.length() > 3)
@@ -976,6 +1131,7 @@ public class ExtensionLoader<T> {
                                     && m.getParameterTypes().length == 0
                                     && m.getReturnType() == URL.class) {
                                 urlTypeIndex = i;
+                                // get方法
                                 attribMethod = name;
                                 break LBL_PTS;
                             }
@@ -983,30 +1139,24 @@ public class ExtensionLoader<T> {
                     }
                     if (attribMethod == null)
                         throw new IllegalStateException("fail to create adaptive class for interface " + type.getName() + ": not found url parameter or url attribute in parameters of method " + method.getName());
-                    // 执行到这说明在type接口声明的方法中虽然不能直接找到URL类型的形参 但是找到某个参数它有getter方法可以间接获得到URL
                     // Null point check
-                    /**
-                     * if (arg0 == null) throw new IllegalArgumentException("...");
-                     * URL url = arg0.getxxx();
-                     */
                     String s = String.format("\nif (arg%d == null) throw new IllegalArgumentException(\"%s argument == null\");", urlTypeIndex, pts[urlTypeIndex].getName());
                     code.append(s);
                     s = String.format("\nif (arg%d.%s() == null) throw new IllegalArgumentException(\"%s argument %s() == null\");", urlTypeIndex, attribMethod, pts[urlTypeIndex].getName(), attribMethod);
                     code.append(s);
-
+                    // get方法拿到URL
                     s = String.format("%s url = arg%d.%s();", URL.class.getName(), urlTypeIndex, attribMethod);
                     code.append(s);
                 }
-                // @Adaptive的value()属性
+                /**
+                 * {@link Adaptive}注解方法指定的值
+                 * 这个值是{@link URL}中的key 根据这个key拿到{@link URL}中配置的val
+                 * 这个val就是真正的对接口的实现别名
+                 */
                 String[] value = adaptiveAnnotation.value();
                 // value is not set, use the value generated from class name as the key
                 if (value.length == 0) {
-                    /**
-                     * 比如type接口名
-                     *     - Protocol->protocol
-                     *     - LoadBalance->load.balance
-                     */
-                    char[] charArray = this.type.getSimpleName().toCharArray(); // 扩展点的名称
+                    char[] charArray = this.type.getSimpleName().toCharArray();
                     StringBuilder sb = new StringBuilder(128);
                     for (int i = 0; i < charArray.length; i++) {
                         if (Character.isUpperCase(charArray[i])) {
@@ -1037,13 +1187,15 @@ public class ExtensionLoader<T> {
                     }
                 }
 
-                /**
-                 * 扩展名
-                 * 默认情况下接口上的@SPI定义的默认扩展名是空的
-                 */
                 String defaultExtName = cachedDefaultName;
+                /**
+                 * dubbo的SPI核心 本质就是在找实现的别名extName
+                 * 比如RegistryFactory的zk实现就是ZookeeperRegistryFactory的别名是zookeeper
+                 */
                 String getNameCode = null;
-                // 轮询@Adaptice注解值
+                /**
+                 * {@link Adaptive}注解指定的key从{@link URL#getParameter(String)}中拿到实现的别名
+                 */
                 for (int i = value.length - 1; i >= 0; --i) {
                     if (i == value.length - 1) {
                         if (null != defaultExtName) {
@@ -1073,15 +1225,26 @@ public class ExtensionLoader<T> {
                             getNameCode = String.format("url.getProtocol() == null ? (%s) : url.getProtocol()", getNameCode);
                     }
                 }
+                /**
+                 * dubbo的SPI核心 本质就是在找实现的别名extName
+                 * 比如RegistryFactory的zk实现就是ZookeeperRegistryFactory的别名是zookeeper
+                 */
                 code.append("\nString extName = ").append(getNameCode).append(";");
                 // check extName == null?
-                String s = String.format("\nif(extName == null) " + "throw new IllegalStateException(\"Fail to get extension(%s) name from url(\" + url.toString() + \") use keys(%s)\");", type.getName(), Arrays.toString(value));
+                String s = String.format("\nif(extName == null) " + "throw new IllegalStateException(\"Fail to get extension(%s) name from url(\" + url.toString() + \") use keys(%s)\");",
+                        type.getName(), Arrays.toString(value));
                 code.append(s);
 
-                // 核心 根据dubbo SPI扩展方式获取扩展点的自适应扩展实现
-                s = String.format("\n%s extension = (%<s)%s.getExtensionLoader(%s.class).getExtension(extName);", type.getName(), ExtensionLoader.class.getSimpleName(), type.getName());
+                /**
+                 * dubbo的SPI核心 本质就是给要实现的方法套个代理方法 真正的实现在运行时候让代理去找
+                 * 而代理方法就是在找实现的别名extName
+                 * 比如
+                 * RegistryFactory extension = (RegistryFactory)ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(zookeeper);
+                 * return extension.当前的代理的这个方法;
+                 */
+                s = String.format("\n%s extension = (%<s)%s.getExtensionLoader(%s.class).getExtension(extName);",
+                        type.getName(), ExtensionLoader.class.getSimpleName(), type.getName());
                 code.append(s);
-
                 // return statement
                 if (!rt.equals(void.class)) {
                     code.append("\nreturn ");
@@ -1096,9 +1259,6 @@ public class ExtensionLoader<T> {
                 }
                 code.append(");");
             }
-            /**
-             * 把上面生成的方法内部逻辑的代码code加到整个类代码codeBuilder上
-             */
             codeBuilder.append("\npublic ").append(rt.getCanonicalName()).append(" ").append(method.getName()).append("(");
             for (int i = 0; i < pts.length; i++) {
                 if (i > 0) {

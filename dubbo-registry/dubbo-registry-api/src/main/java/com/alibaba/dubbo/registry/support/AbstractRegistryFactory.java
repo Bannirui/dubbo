@@ -44,6 +44,13 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
     private static final ReentrantLock LOCK = new ReentrantLock();
 
     // Registry Collection Map<RegistryAddress, Registry>
+    /**
+     * 缓存注册中心的实例
+     * <ul>
+     *     <li>key=</li>
+     *     <li>val=注册中心的具体实现 比如zk redis</li>
+     * </ul>
+     */
     private static final Map<String, Registry> REGISTRIES = new ConcurrentHashMap<String, Registry>();
 
     /**
