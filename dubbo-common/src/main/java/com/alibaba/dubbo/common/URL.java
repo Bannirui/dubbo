@@ -80,7 +80,13 @@ public final class URL implements Serializable {
 
     private static final long serialVersionUID = -1985165475234910535L;
 
-    private final String protocol; // 协议
+    /**
+     * 协议类型
+     * <ul>
+     *     <li>{@link Constants.REGISTRY_PROTOCOL}</li>
+     * </ul>
+     */
+    private final String protocol;
 
     private final String username;
 
@@ -94,6 +100,9 @@ public final class URL implements Serializable {
 
     private final String path; // 路径
 
+    /**
+     * URL中缓存的配置信息
+     */
     private final Map<String, String> parameters;
 
     // ==== cache ====
@@ -185,9 +194,13 @@ public final class URL implements Serializable {
      * @see URL
      */
     /**
-     * 协议://用户名:密码@ip:port/路径
-     *     - zookeeper://localhost:2181
-     *     - zookeeper://bannirui:123456@localhost:2181
+     * 格式转换
+     * 标准格式是 协议://用户名:密码@ip:port/路径
+     * 比如
+     * <ul>
+     *     <li>zookeeper://localhost:2181</li>
+     *     <li>zookeeper://bannirui:123456@localhost:2181</li>
+     * </ul>
      */
     public static URL valueOf(String url) {
         if (url == null || (url = url.trim()).length() == 0) {
@@ -1147,6 +1160,17 @@ public final class URL implements Serializable {
         return buf.toString();
     }
 
+    /**
+     * 把参数拼接在现有url生成的path生成新的path
+     * 格式是path?k1=v1&k2=v2&k3=v3
+     * @param buf 现有的url生成的path
+     * @param concat 拼接
+     * @param parameters 控制拼接哪些参数
+     *                   <ul>
+     *                     <li>null 把{@link URL#parameters}都拼接上</li>
+     *                     <li>给定 就只拼接给定的key</li>
+     *                   </ul>
+     */
     private void buildParameters(StringBuilder buf, boolean concat, String[] parameters) {
         if (getParameters() != null && getParameters().size() > 0) {
             List<String> includes = (parameters == null || parameters.length == 0 ? null : Arrays.asList(parameters));
@@ -1174,6 +1198,19 @@ public final class URL implements Serializable {
         return buildString(appendUser, appendParameter, false, false, parameters);
     }
 
+    /**
+     *
+     * @param appendUser
+     * @param appendParameter 要不要拼接上参数
+     * @param useIP 用ip作host
+     * @param useService
+     * @param parameters 上面控制参数要拼接的情况下
+     *                   <ul>
+     *                     <li>为空 就拼接上{@link URL#parameters}的所有参数</li>
+     *                     <li>不空 就只拼接上现在指定的参数</li>
+     *                   </ul>
+     * @return {@link URL#protocol}://{@link URL#username}:{@link URL#password}@{@link URL#host}:{@link URL#port}/path?参数1=值1&参数2=值2
+     */
     private String buildString(boolean appendUser, boolean appendParameter, boolean useIP, boolean useService, String... parameters) {
         StringBuilder buf = new StringBuilder();
         if (protocol != null && protocol.length() > 0) {
@@ -1211,6 +1248,7 @@ public final class URL implements Serializable {
             buf.append("/");
             buf.append(path);
         }
+        // 在后面用?拼接上参数
         if (appendParameter) {
             buildParameters(buf, true, parameters);
         }

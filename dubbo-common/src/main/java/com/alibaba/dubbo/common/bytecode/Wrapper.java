@@ -92,7 +92,7 @@ public abstract class Wrapper {
     /**
      * get wrapper.
      *
-     * @param c Class instance.
+     * @param c Class instance. 可能是实现类 可能是接口类
      * @return Wrapper instance(not null).
      */
     public static Wrapper getWrapper(Class<?> c) {

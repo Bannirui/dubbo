@@ -19,6 +19,7 @@ package com.alibaba.dubbo.rpc.proxy.javassist;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.bytecode.Proxy;
 import com.alibaba.dubbo.common.bytecode.Wrapper;
+import com.alibaba.dubbo.rpc.Invocation;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.proxy.AbstractProxyFactory;
 import com.alibaba.dubbo.rpc.proxy.AbstractProxyInvoker;
@@ -47,9 +48,21 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
         // TODO Wrapper cannot handle this scenario correctly: the classname contains '$'
-        // 编码方式创建代理对象
+        /**
+         * 编码方式创建代理对象
+         * 为什么会判断$ 因为{@link com.alibaba.dubbo.common.extension.SPI}机制会创建默认的代理类 在{@link com.alibaba.dubbo.common.extension.ExtensionLoader}中能看到dubbo生成的Adaptive类命名方式
+         * 接口名+$Adaptive
+         * <ul>
+         *     <li>所以这个地方发现已经是代理类了就对代理类再包一层代理</li>
+         *     <li>不是代理类就直接对接口操作 基于接口创建代理</li>
+         * </ul>
+         */
         final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
-        // 匿名内部类 将来Invoker实例的invoker(...)方法会调用到doInvoke(...)
+        /**
+         * 创建一个{@link Invoker}对象 典型的模板方法
+         * 最终客户端拿到了{@link Invoker}实例调用{@link Invoker#invoke}会执行到这个匿名类对象的{@link AbstractProxyInvoker#doInvoke}方法
+         * 而真正的执行逻辑又会委派给{@link Wrapper}执行
+         */
         return new AbstractProxyInvoker<T>(proxy, type, url) {
             @Override
             protected Object doInvoke(T proxy, String methodName,

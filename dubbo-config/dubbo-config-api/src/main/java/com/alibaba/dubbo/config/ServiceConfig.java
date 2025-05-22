@@ -82,14 +82,26 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private final List<URL> urls = new ArrayList<URL>();
     private final List<Exporter<?>> exporters = new ArrayList<Exporter<?>>();
     // interface type
-    private String interfaceName; // 提供的服务接口名
-    private Class<?> interfaceClass; // 提供的服务接口
+    /**
+     * 提供的服务接口名
+     * 就是{@link ServiceConfig#interfaceClass}的名字
+     */
+    private String interfaceName;
+    // 提供的服务接口
+    private Class<?> interfaceClass;
     // reference to interface impl
-    private T ref; // 范型 指向暴露的接口的具体实现
+    /**
+     * {@link ServiceConfig#interfaceClass}的派生类
+     * 就是要暴露出去的服务的真正实现的实例
+     */
+    private T ref;
     // service name
     private String path; // 暴露的服务名称(接口全限定名)
     // method configuration
     private List<MethodConfig> methods;
+    /**
+     * 服务提供方法的配置
+     */
     private ProviderConfig provider;
     private transient volatile boolean exported; // 标识provider已经暴露服务
 
@@ -223,10 +235,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (unexported) throw new IllegalStateException("Already unexported!");
         if (exported)
             return;
-        this.exported = true; // 标识provider已经启动
+        // 标识provider已经启动 用来防止重复启动
+        this.exported = true;
         if (this.interfaceName == null || interfaceName.length() == 0)
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
-        // 尝试从VM参数找一下是否有对Provider设置的配置项写回到ProviderConfig中去
+        /**
+         * 尝试从VM参数找一下是否有对Provider设置的配置项写到{@link ServiceConfig#provider}中去
+         * 之前{@link ServiceConfig#provider}是空的 经过下面的checkDefault方法至少{@link ServiceConfig#provider}不是空的
+         */
         this.checkDefault();
         if (this.provider != null) {
             if (application == null)
@@ -252,12 +268,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (monitor == null)
                 monitor = application.getMonitor();
         }
-        if (ref instanceof GenericService) { // 要导出的服务是泛化服务类型
+        if (ref instanceof GenericService) {
             interfaceClass = GenericService.class;
             if (StringUtils.isEmpty(generic)) {
                 generic = Boolean.TRUE.toString();
             }
-        } else { // 要导出服务不是泛化类型
+        } else {
             try {
                 // 接口名反射出接口的类
                 this.interfaceClass = Class.forName(interfaceName, true, Thread.currentThread().getContextClassLoader());

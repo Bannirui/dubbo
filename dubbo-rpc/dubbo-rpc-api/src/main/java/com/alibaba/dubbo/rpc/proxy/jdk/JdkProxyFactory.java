@@ -38,7 +38,7 @@ public class JdkProxyFactory extends AbstractProxyFactory {
 
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
-        // 将来通过Invoker对象调用invoke(...)时调用内部类的doInvoke(...)方法
+        // jdk的反射执行
         return new AbstractProxyInvoker<T>(proxy, type, url) {
             @Override
             protected Object doInvoke(T proxy, String methodName,

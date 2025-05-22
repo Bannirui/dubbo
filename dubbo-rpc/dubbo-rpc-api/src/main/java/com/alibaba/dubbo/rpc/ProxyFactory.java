@@ -48,16 +48,15 @@ public interface ProxyFactory {
 
     /**
      * create invoker.
-     *
-     * @param <T>
-     * @param proxy
-     * @param type
-     * @param url
+     * 创建{@link Invoker}对象 代理的代理
+     * @param proxy 接口的具体实现
+     * @param type 接口
+     * @param url dubbo的{@link URL}
+     *            <ul>
+     *              <li>生产者 url中会被添加上{@link Constants#EXPORT_KEY}参数</li>
+     *              <li></li>
+     *            </ul>
      * @return invoker
-     */
-    /**
-     * 生产者调用这个方法生成Invoker对象
-     * 将来某个时机通过Invoker对象执行invoke(...)方法 使用到目标对象提供的方法
      */
     @Adaptive({Constants.PROXY_KEY})
     <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) throws RpcException;

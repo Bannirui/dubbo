@@ -30,12 +30,18 @@ import java.lang.reflect.InvocationTargetException;
  */
 public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
 
+    // 实现的实例
     private final T proxy;
 
+    // 实现的接口
     private final Class<T> type;
 
     private final URL url;
 
+    /**
+     * @param proxy 实现的实例
+     * @param type 实现的接口
+     */
     public AbstractProxyInvoker(T proxy, Class<T> type, URL url) {
         if (proxy == null) {
             throw new IllegalArgumentException("proxy == null");
@@ -81,6 +87,13 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
         }
     }
 
+    /**
+     * @param proxy 实现
+     * @param methodName 代理的方法
+     * @param parameterTypes 方法形参列表中的参数类型
+     * @param arguments 方法的实参
+     * @return 方法的执行结果
+     */
     protected abstract Object doInvoke(T proxy, String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Throwable;
 
     @Override

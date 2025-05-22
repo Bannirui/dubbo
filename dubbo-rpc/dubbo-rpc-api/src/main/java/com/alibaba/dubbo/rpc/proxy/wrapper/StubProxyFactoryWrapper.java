@@ -37,6 +37,10 @@ import java.lang.reflect.Constructor;
 
 /**
  * StubProxyFactoryWrapper
+ * {@link ProxyFactory}通过{@link com.alibaba.dubbo.common.extension.SPI}进行动态发现
+ * 从{@link URL}中要找的参数是{@link Constants#PROXY_KEY} 没有这个配置就用的是javassist的实现 也就是{@link com.alibaba.dubbo.rpc.proxy.javassist.JavassistProxyFactory}
+ * 而当前StubProxyFactoryWrapper的构造方法的参数类型是{@link ProxyFactory} 所以当前的stub实现是wrapper
+ * 默认情况下 stub实现会再持有一个javassist实现
  */
 public class StubProxyFactoryWrapper implements ProxyFactory {
 

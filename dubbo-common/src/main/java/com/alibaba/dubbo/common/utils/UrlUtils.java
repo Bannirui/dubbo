@@ -28,18 +28,29 @@ import java.util.Set;
 public class UrlUtils {
 
     /**
-     * address
-     *     - 基础信息
-     *         - 指定了协议://ip:port
-     *         - 没指定协议
-     *             - 单台服务器 ip:port
-     *             - 多服务器 ip1:port1.ip2:port2
-     *     - 把hash表中信息追加到地址后面连接
+     * 地址信息转dubbo通用URL
+     * @param address 单条地址的格式
+     *                但是可能用,隔开了表示的是集群地址 对于这种要转换成backup
+     *                <ul>
+     *                  <li>指定了协议 protocol://ip:port</li>
+     *                  <li>没有指定协议 只有一台主机ip1:port1</li>
+     *                  <li>没有指定协议 多台主机ip1:port1?backup=ip2:port2,ip3:port3</li>
+     *                </ul>
+     * @param defaults 作为{@link URL#parameters}
+     * @return dubbo通用的URL
      */
     public static URL parseURL(String address, Map<String, String> defaults) {
         if (address == null || address.length() == 0) {
             return null;
         }
+        /**
+         * url无非就3种格式
+         * <ul>
+         *     <li>指定了协议 protocol://ip:port</li>
+         *     <li>没有指定协议 只有一台主机ip1:port1</li>
+         *     <li>没有指定协议 多台主机ip1:port1?backup=ip2:port2,ip3:port3</li>
+         * </ul>
+         */
         String url;
         if (address.indexOf("://") >= 0) { // 地址中指定了协议
             url = address;
@@ -57,13 +68,6 @@ public class UrlUtils {
                 url += "?" + Constants.BACKUP_KEY + "=" + backup.toString();
             }
         }
-        /**
-         * 到此为止url无非就3中格式
-         *     - 指定了协议 protocol://ip:port
-         *     - 没有指定协议
-         *         - 只有一台主机 ip1:port1
-         *         - 多台主机 ip1:port1?backup=ip2:port2,ip3:port3
-         */
         String defaultProtocol = defaults == null ? null : defaults.get("protocol");
         if (defaultProtocol == null || defaultProtocol.length() == 0) {
             defaultProtocol = "dubbo";
@@ -141,23 +145,24 @@ public class UrlUtils {
     }
 
     /**
-     * address中用;分割多个地址
-     * 一个地址信息的基本信息
-     *     - 协议://ip:port
-     *     - 附加的其他信息追加到后面
-     * 将hash表中配置信息拼接到地址中
+     * @param address 可以是多条地址 用|作分隔符表示多条地址
+     *                每条地址可能表示单个集群的多个节点再用,隔开
+     * @param defaults 配置存放在{@link URL#parameters}中
+     * @return dubbo的URL
      */
     public static List<URL> parseURLs(String address, Map<String, String> defaults) {
         if (address == null || address.length() == 0) {
             return null;
         }
-        String[] addresses = Constants.REGISTRY_SPLIT_PATTERN.split(address); // 分割符多个地址
+        // 多条地址的话用分隔符|
+        String[] addresses = Constants.REGISTRY_SPLIT_PATTERN.split(address);
         if (addresses == null || addresses.length == 0) {
             return null; //here won't be empty
         }
         List<URL> registries = new ArrayList<URL>();
         for (String addr : addresses) {
-            registries.add(parseURL(addr, defaults)); // 单条地址
+            // 单条地址
+            registries.add(parseURL(addr, defaults));
         }
         return registries;
     }

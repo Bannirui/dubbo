@@ -86,7 +86,8 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected ModuleConfig module;
 
     // registry centers
-    protected List<RegistryConfig> registries; // 注册中心配置
+    // 注册中心配置
+    protected List<RegistryConfig> registries;
 
     // connection events
     protected String onconnect;
@@ -155,13 +156,15 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
     /**
-     * 加载注册中心配置
-     * provider
-     *     - true 生产者加载注册中心配置
-     *     - false 消费者加载注册中心配置
+     *
+     * @param provider 标识角色 是服务生产者在调用还是服务消费者在调用
+     *                 <ul>true 生产者</ul>
+     *                 <ul>false 消费者</ul>
+     * @return
      */
     protected List<URL> loadRegistries(boolean provider) {
-        checkRegistry(); // 尝试为RegistryConfig到VM参数中load配置
+        // 尝试为RegistryConfig到VM参数中load配置
+        checkRegistry();
         List<URL> registryList = new ArrayList<URL>();
         if (this.registries == null || this.registries.isEmpty()) return registryList;
         for (RegistryConfig config : this.registries) {
@@ -203,24 +206,36 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                     }
                 }
                 /**
-                 * 往map中添点配置信息
-                 *     - path->com.alibaba.dubbo.registry.RegistryService
-                 *     - dubbo->2.0.2
-                 *     - timestamp->?
-                 *     - pid->?
-                 *     - protocol->dubbo
-                 *
-                 * 注册中心地址zookeeper://localhost:2181
+                 * 转换为dubbo的{@link URL}
+                 * <ul>
+                 *     <li>address 注册中心地址zookeeper://localhost:2181</li>
+                 *     <li>map 要缓存在{@link URL#parameters}中的参数<ul>
+                 *         <li>path com.alibaba.dubbo.registry.RegistryService</li>
+                 *         <li>dubbo dubbo的版本号</li>
+                 *         <li>timestamp 时间戳</li>
+                 *         <li>pid 进程号</li>
+                 *         <li>protocol dubbo</li>
+                 *     </ul></li>
+                 * </ul>
+                 * 跟注册中心有交互的角色是
+                 * <ul>
+                 *     <li>服务提供者 向注册中心注册服务信息</li>
+                 *     <li>服务消费者 向注册中心订阅服务信息</li>
+                 * </ul>
                  */
-                List<URL> urls = UrlUtils.parseURLs(address, map); // 配置信息写到URL中
+                List<URL> urls = UrlUtils.parseURLs(address, map);
                 for (URL url : urls) {
                     url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());
-                    url = url.setProtocol(Constants.REGISTRY_PROTOCOL);
                     /**
-                     * 注册中心作用
-                     *     - 对于生产者 注册要暴露的服务信息
-                     *     - 对于消费者 订阅服务信息
+                     * 在dubbo里面URL有大量的复制行为 本质原因是
+                     * <ul>
+                     *     <li>大量组件和流程依赖URL</li>
+                     *     <li>各个组件又都有定制化的依赖</li>
+                     * </ul>
+                     * 所以为了避免修改URL信息影响到别的组件作用域就采用了大量的复制
+                     * URL中给注册中心用的 这儿篡改一下协议类型是注册中心
                      */
+                    url = url.setProtocol(Constants.REGISTRY_PROTOCOL);
                     if ((provider && url.getParameter(Constants.REGISTER_KEY, true))
                             || (!provider && url.getParameter(Constants.SUBSCRIBE_KEY, true))) {
                         registryList.add(url);
