@@ -110,6 +110,18 @@ public abstract class Wrapper {
         return ret;
     }
 
+    /**
+     * 编码生成方法invokeMethod
+     * 这个方法需要4个参数
+     * <ul>
+     *     <li>代理的对象</li>
+     *     <li>代理的方法</li>
+     *     <li>方法形参类型</li>
+     *     <li>方法实参</li>
+     * </ul>
+     * @param c 要代理的类(或接口)
+     * @return 编码生成的代理
+     */
     private static Wrapper makeWrapper(Class<?> c) {
         if (c.isPrimitive())
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
@@ -119,6 +131,15 @@ public abstract class Wrapper {
 
         StringBuilder c1 = new StringBuilder("public void setPropertyValue(Object o, String n, Object v){ ");
         StringBuilder c2 = new StringBuilder("public Object getPropertyValue(Object o, String n){ ");
+        /**
+         * 核心方法 构造代理方法
+         * <ul>
+         *     <li>o 要代理的对象</li>
+         *     <li>n 要代理的方法</li>
+         *     <li>p 要代理的方法n的形参类型</li>
+         *     <li>v 要代理的方法n的实参</li>
+         * </ul>
+         */
         StringBuilder c3 = new StringBuilder("public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws " + InvocationTargetException.class.getName() + "{ ");
 
         c1.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");

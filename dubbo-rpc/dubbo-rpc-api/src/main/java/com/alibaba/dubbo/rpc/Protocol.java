@@ -50,9 +50,14 @@ public interface Protocol {
      * @throws RpcException thrown when error occurs during export the service, for example: port is occupied
      */
     /**
-     * 生产者将Invoker对象进行导出
-     *     - 本地
-     *     - 远程
+     * 这个地方{@link Adaptive}注解没有指定{@link URL}中的key
+     * 就用类名{@link Protocol}的protocol作key
+     * 而且这个地方export方法的形参类型是{@link Invoker}不是直接的{@link URL} 所以会先去invoker里面用getUrl()方法拿到{@link URL} 然后再从url中拿到key是protocol的配置值就是实现的别名
+     * 不同协议有不同实现
+     * <ul>
+     *     <li>dubbo {@link DubboProtocol}</li>
+     *     <li>injvm {@link InjvmProtocol}</li>
+     * </ul>
      */
     @Adaptive
     <T> Exporter<T> export(Invoker<T> invoker) throws RpcException;

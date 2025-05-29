@@ -1110,6 +1110,7 @@ public class ExtensionLoader<T> {
                     // find URL getter method
                     /**
                      * 没有直接的{@link URL}类型的形参 但是可能其他的参数可以通过get方法提供{@link URL}
+                     * 比如在{@link Protocol}中 它的export方法打上了{@link Adaptive}
                      * 如果啥都没有
                      * <ul>
                      *     <li>既没有直接提供{@link URL}类型参数</li>
@@ -1149,9 +1150,14 @@ public class ExtensionLoader<T> {
                     code.append(s);
                 }
                 /**
-                 * {@link Adaptive}注解方法指定的值
-                 * 这个值是{@link URL}中的key 根据这个key拿到{@link URL}中配置的val
-                 * 这个val就是真正的对接口的实现别名
+                 * 怎么去{@link URL}中拿配置 就得先有key
+                 * <ul>
+                 *     <li>可以通过{@link Adaptive}注解直接指定</li>
+                 *     <li>{@link Adaptive}注解没有指定 就用接口中作<ul>
+                 *         <li>类Protocol的key就是protocol</li>
+                 *         <li>MyProtocol的key就是my.protocol</li>
+                 *     </ul></li>
+                 * </ul>
                  */
                 String[] value = adaptiveAnnotation.value();
                 // value is not set, use the value generated from class name as the key

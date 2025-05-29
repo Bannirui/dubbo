@@ -375,7 +375,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
     }
 
+    /**
+     *
+     * @param protocolConfig dubbo协议类型配置 dubbo是默认的基于netty的协议
+     * @param registryURLs 远程注册中心的配置
+     */
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        // 通信协议 默认用dubbo
         String name = protocolConfig.getName();
         if (name == null || name.length() == 0) {
             name = "dubbo";
@@ -483,34 +489,31 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if ((contextPath == null || contextPath.length() == 0) && provider != null) {
             contextPath = provider.getContextpath();
         }
-
+        // 本机可用的host port
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
 
         /**
-         * ConfiguratorFactory这个扩展接口只配置了2个实现
-         *     - AbsentConfiguratorFactory
-         *     - OverrideConfiguratorFactory
-         * 他们归属于第三优先级缓存 拿着dubbo这个名称查不到
-         * url.getProtocol()->dubbo
+         * {@link ConfiguratorFactory}这个接口就两个实现
+         * <ul>
+         *     <li>override {@link com.alibaba.dubbo.rpc.cluster.configurator.override.OverrideConfiguratorFactory}</li>
+         *     <li>absent {@link com.alibaba.dubbo.rpc.cluster.configurator.absent.AbsentConfigurator}</li>
+         * </ul>
+         * 没有别名是dubbo的实现 所以这个if分支是进不去的
          */
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
-
+        // url中没有scope的配置
         String scope = url.getParameter(Constants.SCOPE_KEY);
         // don't export when none is configured
         if (!Constants.SCOPE_NONE.toString().equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!Constants.SCOPE_REMOTE.toString().equalsIgnoreCase(scope)) {
-                /**
-                 * 导出到本地
-                 * dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49771&qos.port=22222&side=provider&timestamp=1669285279449
-                 */
                 this.exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
@@ -539,26 +542,17 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         }
 
                         /**
-                         * 为服务提供类生成Invoker
-                         * registryURL
-                         *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&pid=88742&qos.port=22222&registry=zookeeper&timestamp=1669353705349
-                         * url
-                         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=88742&qos.port=22222&side=provider&timestamp=1669353705363
-                         * proxyFactory的实现
-                         *     - 默认JavassistProxyFactory
-                         *     - URL中配置项proxy指定名称
-                         * 这个地方registryURL中没有配置proxy 使用JavassistProxyFactory
+                         * 创建一个代理对象
                          */
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
 
                         /**
-                         * 导出服务生成Exporter
-                         * protocol的实现
-                         *     - 默认DubboProtocol
-                         *     - URL中协议protocol指定名称选择实现
-                         * 这个地方Invoker中getURL()中的就是上面的RegistryURL 协议是registry 使用的实现是RegistryProtocol
+                         * 这个地方的protocol是谁的实例
+                         * {@link Protocol}接口方法用了{@link com.alibaba.dubbo.common.extension.Adaptive}却没有指定别名
+                         * 那么就先用{@link Protocol}接口名protocol作为别名也找不到对应的实现
+                         * 最后用接口类上{@link com.alibaba.dubbo.common.extension.SPI}注解指定的dubbo作为别名找到{@link DubboProtocol}这个实现
                          */
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);
@@ -577,13 +571,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void exportLocal(URL url) {
-        // URL协议头等于injvm说明已经导出到了本地 不需要再次导出了
-        if (!Constants.LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) { // dubbo
+        if (!Constants.LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
+            // 复制新的url承载配置 协议改成injvm
             URL local = URL.valueOf(url.toFullString())
                     .setProtocol(Constants.LOCAL_PROTOCOL)
                     .setHost(LOCALHOST)
                     .setPort(0);
-            // injvm://127.0.0.1/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=49970&qos.port=22222&side=provider&timestamp=1669285554307
             StaticContext.getContext(Constants.SERVICE_IMPL_CLASS).put(url.getServiceKey(), getServiceClass(ref));
             /**
              * 创建Invoker 并导出服务
@@ -644,6 +637,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                             try {
                                 Socket socket = new Socket();
                                 try {
+                                    // 连接远程注册中心 系统会随机给本地的socket分配ip和port
                                     SocketAddress addr = new InetSocketAddress(registryURL.getHost(), registryURL.getPort());
                                     socket.connect(addr, 1000);
                                     hostToBind = socket.getLocalAddress().getHostAddress();
