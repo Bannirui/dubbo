@@ -226,7 +226,6 @@ public class DubboProtocol extends AbstractProtocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
-        // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=94935&qos.port=22222&side=provider&timestamp=1669362564480
         URL url = invoker.getUrl();
 
         // export service.
@@ -253,7 +252,6 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
-        // dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=10.10.132.185&bind.port=20880&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=94935&qos.port=22222&side=provider&timestamp=1669362564480
         this.openServer(url);
         optimizeSerialization(url);
         return exporter;
@@ -288,10 +286,6 @@ public class DubboProtocol extends AbstractProtocol {
         url = url.addParameter(Constants.CODEC_KEY, DubboCodec.NAME);
         ExchangeServer server;
         try {
-            /**
-             * url
-             *     - dubbo://192.168.0.11:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&bind.ip=192.168.0.11&bind.port=20880&channel.readonly.sent=true&codec=dubbo&dubbo=2.0.2&generic=false&heartbeat=60000&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=34796&qos.port=22222&side=provider&timestamp=1669553629897
-             */
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);

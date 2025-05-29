@@ -321,9 +321,6 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (path == null || path.length() == 0) {
             path = interfaceName;
         }
-        /**
-         * 导出服务
-         */
         this.doExportUrls();
         CodecSupport.addProviderSupportedSerialization(getUniqueServiceName(), getExportedUrls());
         ProviderModel providerModel = new ProviderModel(getUniqueServiceName(), this, ref);
@@ -364,11 +361,6 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
-        /**
-         * 允许多协议多注册中心导出服务
-         *     - 允许使用不同的协议导出服务
-         *     - 也允许向多个注册中心注册服务
-         */
         List<URL> registryURLs = super.loadRegistries(true); // 生产者加载注册中心配置
         for (ProtocolConfig protocolConfig : protocols) {
             this.doExportUrlsFor1Protocol(protocolConfig, registryURLs);
@@ -557,7 +549,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);
                     }
-                } else { // 没有注册中心 仅仅导出服务
+                } else {
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 

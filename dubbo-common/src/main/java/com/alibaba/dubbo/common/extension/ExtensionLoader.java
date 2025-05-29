@@ -57,10 +57,16 @@ import java.util.regex.Pattern;
  * @see com.alibaba.dubbo.common.extension.Activate
  */
 /**
- * 接口上的{@link SPI}注解和{@link Adaptive}注解搭配使用
+ * 关于SPI的扫描策略
  * <ul>
- *     <li>同时使用两个注解 就优先根据{@link Adaptive}注解指定的参数去{@link URL}找对应的实现别名 要是没有这个别名对应的实现 就再用{@link SPI}指定的别名找实现</li>
- *     <li>没有用{@link Adaptive}注解 只单独使用了{@link SPI}注解 就用{@link SPI}指定的别名找实现</li>
+ *     <li>自己写个实现类打上`@Adaptive`注解，SPI退化</li>
+ *     <li>接口上打`@SPI`注解指定默认别名，方法打上`@Adaptive`注解<ul>
+ *         <li>没指定别名 -> 解析接口名，比如MyInterfaceName就被解析成my.interface.name<ul>
+ *             <li>protocol特殊处理，直接url.getProtocol()拿到别名，再拿着别名去找实现</li>
+ *             <li>其他的用url.getParameter(xxx)拿到别名，再拿着别名去找实现</li>
+ *         </ul></li>
+ *         <li>指定了key -> 用这个key去`url.getParamter(key)`作别名去找实现，没找到再用`@SPI`注解指定的别名去找</li>
+ *     </ul></li>
  * </ul>
  */
 public class ExtensionLoader<T> {
