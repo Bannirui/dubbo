@@ -18,7 +18,7 @@ public class ApiConsumer {
         reference.setApplication(new ApplicationConfig("native-consumer")); // 配置应用信息
         reference.setRegistry(new RegistryConfig("zookeeper://localhost:2181")); // 配置注册中心信息
         reference.setInterface(DemoService.class); // 引用的远程服务的接口抽象
-        // 和本地bean一样使用service 此代理对象内部封装了所有通讯细节 服务端获得了远程服务的代理对象 像调用本地方法一样
+        // dubbo生成的代理对象 此代理对象内部封装了所有通讯细节 服务端获得了远程服务的代理对象 像调用本地方法一样
         DemoService demoService = reference.get();
         String ret = demoService.sayHello("world");
         System.out.println("ret=" + ret);

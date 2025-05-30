@@ -21,6 +21,7 @@ import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.Version;
 import com.alibaba.dubbo.common.bytecode.Wrapper;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
+import com.alibaba.dubbo.common.extension.SPI;
 import com.alibaba.dubbo.common.utils.ConfigUtils;
 import com.alibaba.dubbo.common.utils.NetUtils;
 import com.alibaba.dubbo.common.utils.ReflectUtils;
@@ -85,8 +86,15 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     private static final ProxyFactory proxyFactory = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
     private final List<URL> urls = new ArrayList<URL>(); // 注册中心
     // interface name
-    private String interfaceName; // 引用的远程服务实现的接口抽象(名称)
-    private Class<?> interfaceClass; // 引用的远程服务的接口抽象(类)
+    /**
+     * {@link ReferenceConfig#interfaceClass}的名字
+     */
+    private String interfaceName;
+    /**
+     * 服务提供方提供的服务
+     * 也就是服务提供方给的接口 作为消费方准备无感本地方式调用的方法
+     */
+    private Class<?> interfaceClass;
     // client type
     private String client;
     // url for peer-to-peer invocation
@@ -97,8 +105,16 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     private ConsumerConfig consumer;
     private String protocol;
     // interface proxy reference
-    private transient volatile T ref; // 引用的远程服务的代理对象
-    private transient volatile Invoker<?> invoker; // 封装了网络通信
+    /**
+     * 在消费端本地创建的{@link ReferenceConfig#interfaceClass}的代理对象
+     * 它又是对{@link ReferenceConfig#invoker}的代理
+     * 将来在本地执行的时候就可以无感一样调用到invoker
+     */
+    private transient volatile T ref;
+    /**
+     *
+     */
+    private transient volatile Invoker<?> invoker;
     private transient volatile boolean initialized; // 标识位 标识远程服务的引用已经初始化完成
     private transient volatile boolean destroyed;
     @SuppressWarnings("unused")
@@ -194,10 +210,14 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         ref = null;
     }
 
+    /**
+     * 创建代理对象 实现{@link ReferenceConfig#interfaceClass}这个接口功能
+     */
     private void init() {
-        if (this.initialized) return; // 避免重复初始化
+        // 典型 避免重复创建代理对象
+        if (this.initialized) return;
         this.initialized = true;
-        if (interfaceName == null || interfaceName.length() == 0) // 目标服务接口合法性校验
+        if (interfaceName == null || interfaceName.length() == 0)
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         // get consumer's global configuration
         this.checkDefault(); // 尝试在VM参数中加载ConsumerConfig配置项
@@ -333,6 +353,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         //attributes are stored by system context.
         StaticContext.getSystemContext().putAll(attributes);
         /**
+         * 生成代理对象
          * map就是一个配置项 包含了远程服务的配置信息 根据配置信息构建远程服务的代理对象
          *     - side -> consumer
          *     - application -> demo-service
@@ -403,13 +424,10 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             } else { // assemble URL from register center's configuration // 远程调用 通过注册中心
                 /**
-                 * 加载注册中心的url
-                 * 启动消费者时指定的远程注册中心配置封装成URL
-                 * 可能存在多协议/多注册中心
-                 * url
-                 *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=82343&qos.port=33333&registry=zookeeper&timestamp=1669709199146
+                 * 拿到注册中心的地址
+                 * registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=82343&qos.port=33333&registry=zookeeper&timestamp=1669709199146
                  */
-                List<URL> us = super.loadRegistries(false); //
+                List<URL> us = super.loadRegistries(false);
                 if (us != null && !us.isEmpty()) {
                     for (URL u : us) {
                         URL monitorUrl = super.loadMonitor(u);
@@ -427,12 +445,16 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
 
             if (this.urls.size() == 1) { // 服务直连或者配置了单个注册中心
                 /**
-                 * Protocol自适应扩展
-                 *     - 默认实现dubbo
-                 *     - URL协议类型
-                 * 这里url
-                 *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=82516&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D82516%26qos.port%3D33333%26register.ip%3D198.18.0.1%26side%3Dconsumer%26timestamp%3D1669709307576&registry=zookeeper&timestamp=1669709314764
-                 * 因此实现是RegistryProtocol
+                 * 此时的url是
+                 * registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=82516&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D82516%26qos.port%3D33333%26register.ip%3D198.18.0.1%26side%3Dconsumer%26timestamp%3D1669709307576&registry=zookeeper&timestamp=1669709314764
+                 * {@link Protocol}
+                 * <ul>
+                 *     <li>refer方法用了{@link com.alibaba.dubbo.common.extension.Adaptive}注解没指定key</li>
+                 *     <li>类上打了{@link SPI#value("dubbo")}指定了默认实现{@link DubboProtocol}</li>
+                 * </ul>
+                 * 所以SPI会解析{@link Protocol}的类名为protocol 因为protocol特殊
+                 * refprotocol.refer()方法的第2个参数类型是{@link URL}
+                 * 因此会执行{@link URL#getProtocol()}得到registry作为别名让SPI去找registry的实现{@link com.alibaba.dubbo.registry.integration.RegistryProtocol}
                  */
                 this.invoker = refprotocol.refer(interfaceClass, this.urls.get(0));
             } else {
@@ -477,14 +499,14 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         }
         // create service proxy
         /**
-         * 根据invoker生成代理类
-         *
-         * ProxyFactory自适应扩展
-         *     - 默认实现javassist
-         *     - URL中配置项proxy
-         * invoker中的URL
-         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?anyhost=true&application=native-consumer&check=false&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=82897&qos.port=33333&register.ip=198.18.0.1&remote.timestamp=1669707577585&side=consumer&timestamp=1669709866593
-         * 实现是JavassistProxyFactory
+         * 上面已经生成了代理对象{@link ReferenceConfig#invoker} 这个代理要解决的是进程单网络通信
+         * 现在准备再套个代理 要解决的是消费方无感调用问题
+         * invoker中的URL是zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?anyhost=true&application=native-consumer&check=false&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=82897&qos.port=33333&register.ip=198.18.0.1&remote.timestamp=1669707577585&side=consumer&timestamp=1669709866593
+         * {@link ProxyFactory}接口打了{@link SPI("javassist")}
+         * {@link ProxyFactory#getProxy(Invoker)}方法打了{@link com.alibaba.dubbo.common.extension.Adaptive("proxy")}
+         * 所以调用{@link Invoker#getUrl()}拿到url再调用{@link URL#getParameter("proxy")}拿到空
+         * 就用{@link SPI}的javassist作为别名让SPI去找实现
+         * 最终找到{@link com.alibaba.dubbo.rpc.proxy.javassist.JavassistProxyFactory#getProxy(Invoker)}
          */
         return (T) proxyFactory.getProxy(this.invoker);
     }

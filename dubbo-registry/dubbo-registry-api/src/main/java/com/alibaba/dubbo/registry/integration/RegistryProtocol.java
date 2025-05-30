@@ -326,19 +326,32 @@ public class RegistryProtocol implements Protocol {
         return key;
     }
 
-    // type 目标对象的接口
+
+    /**
+     *
+     * @param type 消费方要给哪个接口创建代理 就是提供方提供服务的那个接口
+     * @param url 注册中心的连接信息 zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=60408&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D60408%26qos.port%3D33333%26register.ip%3D10.10.132.185%26side%3Dconsumer%26timestamp%3D1669944562056&timestamp=1669944567721
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         /**
-         * url
-         *     - registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=60408&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D60408%26qos.port%3D33333%26register.ip%3D10.10.132.185%26side%3Dconsumer%26timestamp%3D1669944562056&registry=zookeeper&timestamp=1669944567721
-         * 根据registry配置替换协议
-         * url
-         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=60408&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D60408%26qos.port%3D33333%26register.ip%3D10.10.132.185%26side%3Dconsumer%26timestamp%3D1669944562056&timestamp=1669944567721
+         * 为了从配置中心读服务节点信息 需要复制一个url 协议换成registry对应的实现方式
+         * <ul>
+         *     <li>原始 registry://localhost:2181/com.alibaba.dubbo.regis蝇try.RegistryService?application=native-consumer&dubbo=2.0.2&pid=60408&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D60408%26qos.port%3D33333%26register.ip%3D10.10.132.185%26side%3Dconsumer%26timestamp%3D1669944562056&registry=zookeeper&timestamp=1669944567721</li>
+         *     <li>复制 zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=60080&qos.port=33333&refer=application=native-consumer&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=60080&qos.port=33333&register.ip=10.181.137.29&side=consumer&timestamp=1748582227697&timestamp=1748582227721
+         *     </li>
+         * </ul>
+         * 原始的url中{@link URL#getParameter("registry")}拿到的是zookeeper 注册中心的实现用的是zk的{@link ZookeeperRegistry}
          */
         url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
-        Registry registry = registryFactory.getRegistry(url); // ZookeeperRegistry
+        /**
+         * {@link RegistryFactory}接口打了{@link com.alibaba.dubbo.common.extension.SPI("dubbo")}
+         * {@link RegistryFactory#getRegistry(URL)}方法打了{@link com.alibaba.dubbo.common.extension.Adaptive("protocol")}
+         * 所以会调用{@link URL#getProtocol()}拿到zookeeper作为别名让SPI去找实现
+         * 找到的{@link RegistryFactory}实现是{@link ZookeeperRegistry}
+         */
+        Registry registry = registryFactory.getRegistry(url);
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
         }
@@ -366,11 +379,16 @@ public class RegistryProtocol implements Protocol {
         return ExtensionLoader.getExtensionLoader(Cluster.class).getExtension("mergeable");
     }
 
+    /**
+     *
+     * @param cluster
+     * @param registry
+     * @param type
+     * @param url 注册中心的连接信息 zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=83684&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D83684%26qos.port%3D33333%26register.ip%3D198.18.0.1%26side%3Dconsumer%26timestamp%3D1669711051058&timestamp=1669711051113
+     * @return
+     * @param <T>
+     */
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
-        /**
-         * url
-         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-consumer&dubbo=2.0.2&pid=86868&qos.port=33333&refer=application%3Dnative-consumer%26dubbo%3D2.0.2%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D86868%26qos.port%3D33333%26register.ip%3D10.10.132.185%26side%3Dconsumer%26timestamp%3D1669771749570&timestamp=1669771749634
-         */
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
@@ -393,6 +411,9 @@ public class RegistryProtocol implements Protocol {
                 && url.getParameter(Constants.REGISTER_KEY, true)) {
             // consumer://10.10.132.185/com.alibaba.dubbo.demo.DemoService?application=native-consumer&category=consumers&check=false&dubbo=2.0.2&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=87054&qos.port=33333&side=consumer&timestamp=1669772040508
             URL registeredConsumerUrl = getRegisteredConsumerUrl(subscribeUrl, url);
+            /**
+             * 把消费者信息写到注册中心
+             */
             registry.register(registeredConsumerUrl);
             directory.setRegisteredConsumerUrl(registeredConsumerUrl);
         }
@@ -406,6 +427,9 @@ public class RegistryProtocol implements Protocol {
          *     - 给providers configurators routers这3个指定的节点添加监听器
          *     - 自然获取了指定节点下的所有子节点
          *     - providers就包含了当时生产者注册的目标服务信息
+         */
+        /**
+         * 从注册中心把服务提供者写的信息拉下来
          */
         directory.subscribe(subscribeUrl.addParameter(Constants.CATEGORY_KEY,
                 Constants.PROVIDERS_CATEGORY
