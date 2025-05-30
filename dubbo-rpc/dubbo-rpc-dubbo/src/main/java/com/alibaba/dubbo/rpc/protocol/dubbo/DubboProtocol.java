@@ -251,12 +251,17 @@ public class DubboProtocol extends AbstractProtocol {
                 stubServiceMethodsMap.put(url.getServiceKey(), stubServiceMethods);
             }
         }
-
+        // netty网络编程 开放端口服务 服务提供者监听在端口上等着服务调用方的请求过来 比如dubbo协议的20880端口
         this.openServer(url);
         optimizeSerialization(url);
         return exporter;
     }
 
+    /**
+     * 服务提供者需要给服务消费方提供服务 监听在本地端口上 等着dubbo将来把消费方法的本地代理到这个端口上
+     * 比如dubbo协议的监听在20880端口上
+     * @param url 服务提供者要把服务起在哪个端口上 这个地址也会写到注册中心暴露给服务消费方
+     */
     private void openServer(URL url) {
         // find server.
         String key = url.getAddress(); // 10.10.132.185:20880
@@ -273,6 +278,9 @@ public class DubboProtocol extends AbstractProtocol {
         }
     }
 
+    /**
+     * @param url 服务提供方要监听在哪个端口上 等服务启动成功后 也会把这个地址写到注册中心暴露给服务消费方
+     */
     private ExchangeServer createServer(URL url) {
         // send readonly event when server closes, it's enabled by default
         url = url.addParameterIfAbsent(Constants.CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString());

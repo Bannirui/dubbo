@@ -52,11 +52,17 @@ public interface Protocol {
     /**
      * 这个地方{@link Adaptive}注解没有指定{@link URL}中的key
      * 就用类名{@link Protocol}的protocol作key
-     * 而且这个地方export方法的形参类型是{@link Invoker}不是直接的{@link URL} 所以会先去invoker里面用getUrl()方法拿到{@link URL} 然后再从url中拿到key是protocol的配置值就是实现的别名
-     * 不同协议有不同实现
+     * 而且这个地方export方法的形参类型是{@link Invoker}不是直接的{@link URL} 所以会先去invoker里面用getUrl()方法拿到{@link URL}
+     * 上面拿到的key
      * <ul>
-     *     <li>dubbo {@link DubboProtocol}</li>
-     *     <li>injvm {@link InjvmProtocol}</li>
+     *     <li>protocol就调用url.getProtocol()拿别名</li>
+     *     <li>其他的就调用url.getParameter(key)拿别名</li>
+     * </ul>
+     * 然后拿着别名用SPI去找实现
+     * 拿到的实现是{@link RegistryProtocol}在这个逻辑里面做两件事情
+     * <ul>
+     *     <li>调用{@link DubboProtocol}开放端口服务</li>
+     *     <li>将自身服务信息写到远程注册中心</li>
      * </ul>
      */
     @Adaptive

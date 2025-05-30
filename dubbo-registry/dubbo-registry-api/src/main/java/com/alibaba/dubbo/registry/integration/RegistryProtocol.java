@@ -124,49 +124,45 @@ public class RegistryProtocol implements Protocol {
         return overrideListeners;
     }
 
+    /**
+     * 把提供的服务信息写到注册中心去
+     * @param registryUrl 注册中心的地址
+     *                    比如zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95948%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669364071921&pid=95948&qos.port=22222&timestamp=1669364071907
+     * @param registedProviderUrl 本地开放的端口服务
+     *                            dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95948&side=provider&timestamp=1669364071921
+     */
     public void register(URL registryUrl, URL registedProviderUrl) {
         /**
-         * registryUrl
-         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95948%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669364071921&pid=95948&qos.port=22222&timestamp=1669364071907
-         * registedProviderUrl
-         *     - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95948&side=provider&timestamp=1669364071921
-         *
-         * RegistryFactory实现扩展
-         *     - 默认dubbo
-         *     - URL协议指定
-         *         - 这个地方使用ZookeeperRegistryFactory实现
-         *
-         * 拿到zkClient 准备进行读写
+         * {@link RegistryFactory#getRegistry(URL)}这个方法的SPI方式是用protocol取url的配置
+         * 因为protocol特殊 所以调用{@link URL#getProtocol()}拿到结果是zookeeper
+         * SPI会去找别名是zookeeper的{@link ZookeeperRegistry}
          */
         Registry registry = registryFactory.getRegistry(registryUrl);
         /**
          * 不同注册中心实现关注各自的读写
-         *     - ZookeeperRegistry负责zk的读写
+         * <ul>
+         *     <li>zookeeper {@link ZookeeperRegistry}实现zk的注册中心</li>
+         * </ul>
          */
         registry.register(registedProviderUrl);
     }
 
     /**
-     * 生产者将目标服务创建Invoker对象导出到远程
-     *     - 启动服务
-     *         - 通过Protocol的DubboProtocol实现
-     *     - 服务注册
-     *         - 通过RegistryFactory的ZookeeperRegistryFactory注册到远程注册中心
+     * 2层语义
+     * <ul>
+     *     <li>服务提供者开启端口服务</li>
+     *     <li>将自身信息注册到注册中心</li>
+     * </ul>
+     * @param originInvoker 这个时候这个{@link Invoker#getUrl()}拿到url的{@link URL#getProtocol()}是registry
      */
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
         //export invoker
         /**
-         * 真正的导出服务
-         *     - 实现在DubboProtocol中
-         *     - 启动目标服务
+         * 调用{@link DubboProtocol}利用netty开放端口服务
          */
         final ExporterChangeableWrapper<T> exporter = this.doLocalExport(originInvoker);
-
-        /**
-         * 注册中心的地址
-         *     - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95551%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669363479100&pid=95551&qos.port=22222&timestamp=1669363479082
-         */
+        // 拿到远程注册中心的地址
         URL registryUrl = getRegistryUrl(originInvoker);
 
         //registry provider
@@ -180,11 +176,18 @@ public class RegistryProtocol implements Protocol {
 
         if (register) {
             /**
-             * 注册到远程注册中心
-             *     - registryUrl
-             *         - zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95899%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669364001492&pid=95899&qos.port=22222&timestamp=1669364001477
-             *     - registeredProviderUrl
-             *         - dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95899&side=provider&timestamp=1669364001492
+             * 本地的网络服务已经开启 就等着别人来连接了 这个时候就要把自身的服务连接信息告诉别人
+             * 注册到远程注册中心 把什么注册到注册中心呢
+             * 服务信息写到注册中心的目的是跟服务消费者共享自身连接信息 让其他人可以连接到自己
+             * 所以服务提供者一定会将自己的下面几个信息暴露出去
+             * <ul>
+             *     <li>自己的服务端口 本机ip:port</li>
+             *     <li>自己的服务接口</li>
+             * </ul>
+             * <ul>
+             *     <li>zookeeper://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=native-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F10.10.132.185%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Dnative-provider%26bind.ip%3D10.10.132.185%26bind.port%3D20880%26dubbo%3D2.0.2%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D95899%26qos.port%3D22222%26side%3Dprovider%26timestamp%3D1669364001492&pid=95899&qos.port=22222&timestamp=1669364001477</li>
+             *     <li>dubbo://10.10.132.185:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=native-provider&dubbo=2.0.2&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=95899&side=provider&timestamp=1669364001492</li>
+             * </ul>
              */
             this.register(registryUrl, registeredProviderUrl);
             ProviderConsumerRegTable.getProviderWrapper(originInvoker).setReg(true);
@@ -200,6 +203,13 @@ public class RegistryProtocol implements Protocol {
         return new DestroyableExporter<T>(exporter, originInvoker, overrideSubscribeUrl, registeredProviderUrl);
     }
 
+    /**
+     * {@link Protocol}的SPI方式是从{@link Invoker#getUrl()}拿到url然后{@link URL#getProtocol()}拿到值作key去SPI找实现
+     * 这个方法要做的是在本机开启端口服务等待服务消费者过来请求
+     * 所以需要的是{@link DubboProtocol}
+     * 因此需要复制一个url出来修改protocol成dubbo
+     * @param originInvoker 此时getUrl()拿到的url的protocol是registry
+     */
     @SuppressWarnings("unchecked")
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker) {
         String key = getCacheKey(originInvoker);
@@ -208,14 +218,12 @@ public class RegistryProtocol implements Protocol {
             synchronized (bounds) {
                 exporter = (ExporterChangeableWrapper<T>) bounds.get(key);
                 if (exporter == null) {
+                    // 复制url协议从registry换成dubbo 放到invoker里面
                     final Invoker<?> invokerDelegete = new InvokerDelegete<T>(originInvoker, getProviderUrl(originInvoker));
                     /**
-                     * invokerDelegate是真正运行的目标对象的代理
-                     *     - invoker的协议已经被篡改了
-                     *         - 本地的话是InjvmProtocol 协议是injvm
-                     *         - 远程的话是RegistryProtocol 协议是registry
-                     *     - 因此现在要真正启动服务需要再用当时的运行协议
-                     *         - 这个地方是dubbo协议 使用的实现是DubboRegistry
+                     * 上面这一行代码的目的就是为了
+                     * protocol.export(invoker)执行时候从invoker.getUrl()拿到的url的url.getProtocol()返回的是dubbo
+                     * 这样就可以{@link DubboProtocol#export()}
                      */
                     exporter = new ExporterChangeableWrapper<T>((Exporter<T>) protocol.export(invokerDelegete), originInvoker);
                     bounds.put(key, exporter);
@@ -296,6 +304,7 @@ public class RegistryProtocol implements Protocol {
      * @return
      */
     private URL getProviderUrl(final Invoker<?> origininvoker) {
+        // 拿到远程配置中心的url protocol是registry
         String export = origininvoker.getUrl().getParameterAndDecoded(Constants.EXPORT_KEY);
         if (export == null || export.length() == 0) {
             throw new IllegalArgumentException("The registry export url is null! registry: " + origininvoker.getUrl());

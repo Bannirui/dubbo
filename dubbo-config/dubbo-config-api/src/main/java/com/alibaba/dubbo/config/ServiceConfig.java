@@ -543,8 +543,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         /**
                          * 这个地方的protocol是谁的实例
                          * {@link Protocol}接口方法用了{@link com.alibaba.dubbo.common.extension.Adaptive}却没有指定别名
-                         * 那么就先用{@link Protocol}接口名protocol作为别名也找不到对应的实现
-                         * 最后用接口类上{@link com.alibaba.dubbo.common.extension.SPI}注解指定的dubbo作为别名找到{@link DubboProtocol}这个实现
+                         * 那么就先用{@link Protocol}接口名protocol作key去{@link URL}中拿配置
+                         * <ul>
+                         *     <li>protocol特殊处理 用{@link URL#getProtocol()}方法拿到registry作为别名去SPI找实现</li>
+                         *     <li>其他的用{@link URL#getParameter(String)}方法拿到别名去SPI找实现</li>
+                         * </ul>
+                         * 最终找到的protocol的实现是{@link com.alibaba.dubbo.registry.integration.RegistryProtocol}
                          */
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);
